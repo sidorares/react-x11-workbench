@@ -1,0 +1,60 @@
+{
+  "name": "@react-x11/workbench",
+  "version": "0.0.0",
+  "description": "The component workshop for react-x11: develop, test and compare components in isolation",
+  "keywords": [
+    "react",
+    "react-x11",
+    "x11",
+    "components",
+    "storybook",
+    "workbench",
+    "dev-tool"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sidorares/react-x11-workbench.git"
+  },
+  "author": "Andrey Sidorov <andrey.sidorov@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./story": {
+      "types": "./dist/story/index.d.ts",
+      "default": "./dist/story/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prebuild": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-x11": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.17",
+    "prettier": "^3.6.0",
+    "react": "^19.2.8",
+    "react-x11": "github:sidorares/react-x11#cefbf44cc978719b54fd625b4bd270695acea6ba",
+    "typescript": "^7.0.2"
+  }
+}

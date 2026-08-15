@@ -27,7 +27,9 @@ export const basic = () => (
 );
 
 export const multiSelect = story(
-  (args) => <Table rows={files} columns={columns} selectionMode="multiple" {...args} />,
+  (args) => (
+    <Table rows={files} columns={columns} selectionMode="multiple" {...args} />
+  ),
   { args: { rowHeight: 24 }, controls: { rowHeight: 'number' } },
 );
 ```
@@ -112,13 +114,13 @@ elements.
 **Not in `@react-x11/components`.** The tool breaks that repo's grammar at
 every seam, and the grammar is load-bearing:
 
-| repo rule | the workbench |
-| --- | --- |
-| no JSX in `src/` | is an app; its GUI is JSX throughout |
-| no component imports another component | imports *every* component, on purpose |
+| repo rule                                          | the workbench                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------- |
+| no JSX in `src/`                                   | is an app; its GUI is JSX throughout                                            |
+| no component imports another component             | imports _every_ component, on purpose                                           |
 | `sideEffects: false`, tree-shake guard per subpath | ships a CLI bin, a config loader, a file watcher — side effects are the product |
-| every `src/` dir ⇒ subpath + docs page + example | is not a component; the guards would fight it forever |
-| `files: ["dist", "src"]` installed by every app | would tax every runtime consumer with a dev tool |
+| every `src/` dir ⇒ subpath + docs page + example   | is not a component; the guards would fight it forever                           |
+| `files: ["dist", "src"]` installed by every app    | would tax every runtime consumer with a dev tool                                |
 
 And its consumers are wider than one repo: core's own examples, the
 components library, and any app author's private component set.
@@ -147,16 +149,16 @@ never a migration to a second dialect. The workshop, the capture CLI and
 the docs pipeline read the same contract; there is no GUI-only or
 capture-only story.
 
-| When a story needs… | …it adds | and nothing else moves |
-| --- | --- | --- |
-| to exist | a `*.story.tsx` file; each named export a component | — |
-| a variant to compare against | another named export | the grid and compare views pick both up |
-| a title, a size, a fixed theme | `export default { title, size, theme }` | exports are found the same way |
-| knobs | `story(fn, { args, controls })` | plain exports beside it stay plain |
-| shared chrome (providers, fonts, padding) | a decorator in `workbench.config.ts` | story files don't know about it |
-| interaction ("open the menu, then look") | `play` on that story | the workshop runs it on demand; capture waits for it |
-| a capture matrix (themes × sizes) | `capture: { themes, sizes, delay }` | the workshop shows the same story once |
-| pixel-perfect CI | nothing — capture (M3) reads the same file | — |
+| When a story needs…                       | …it adds                                            | and nothing else moves                               |
+| ----------------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| to exist                                  | a `*.story.tsx` file; each named export a component | —                                                    |
+| a variant to compare against              | another named export                                | the grid and compare views pick both up              |
+| a title, a size, a fixed theme            | `export default { title, size, theme }`             | exports are found the same way                       |
+| knobs                                     | `story(fn, { args, controls })`                     | plain exports beside it stay plain                   |
+| shared chrome (providers, fonts, padding) | a decorator in `workbench.config.ts`                | story files don't know about it                      |
+| interaction ("open the menu, then look")  | `play` on that story                                | the workshop runs it on demand; capture waits for it |
+| a capture matrix (themes × sizes)         | `capture: { themes, sizes, delay }`                 | the workshop shows the same story once               |
+| pixel-perfect CI                          | nothing — capture (M3) reads the same file          | —                                                    |
 
 Three rules keep it honest:
 
@@ -173,14 +175,14 @@ Three rules keep it honest:
 ```ts
 // @react-x11/workbench/story — the whole import surface for story files
 export interface StoryMeta<Args = {}> {
-  name?: string;                      // sidebar label; default: export name
+  name?: string; // sidebar label; default: export name
   size?: { width: number; height: number }; // preview + capture viewport
   theme?: 'light' | 'dark' | 'both';
   direction?: 'ltr' | 'rtl' | 'both';
-  args?: Args;                        // initial knob values
-  controls?: ControlsFor<Args>;       // 'number' | 'text' | 'boolean' | options[]
+  args?: Args; // initial knob values
+  controls?: ControlsFor<Args>; // 'number' | 'text' | 'boolean' | options[]
   play?: (ctx: PlayContext) => Promise<void>;
-  capture?: CaptureOptions;           // M3: matrix, delay, mid-play shots
+  capture?: CaptureOptions; // M3: matrix, delay, mid-play shots
 }
 export function story<Args>(
   render: (args: Args) => ReactNode,
@@ -195,11 +197,11 @@ export function story<Args>(
 ```ts
 // workbench.config.ts (optional; defaults shown)
 export default {
-  stories: ['**/*.story.tsx'],       // node_modules excluded
-  decorators: [],                    // (story) => ReactNode — providers, padding
+  stories: ['**/*.story.tsx'], // node_modules excluded
+  decorators: [], // (story) => ReactNode — providers, padding
   themes: { light: undefined, dark: undefined }, // overrides resolveTheme inputs
   sizes: { default: { width: 640, height: 480 } },
-  fonts: {},                         // family → ttf path; defaults to the shipped pack
+  fonts: {}, // family → ttf path; defaults to the shipped pack
   captureDir: '__screenshots__',
 };
 ```
@@ -227,10 +229,10 @@ workbench is the best stress test the ecosystem has, and it eats core's
   multi-window app behaves anyway.
 - **Compare view** — the reason this tool exists ahead of capture. Two
   modes, both consuming plain named exports:
-  - *Split*: any two stories — or one story under two themes, two
+  - _Split_: any two stories — or one story under two themes, two
     directions, two sizes, or two `args` sets — side by side in a
     `SplitPane`, scroll and knobs optionally linked.
-  - *Grid*: every named export of a file in a labelled matrix (the
+  - _Grid_: every named export of a file in a labelled matrix (the
     `examples/timeline.tsx` `Gallery` formalized), with theme × size axes
     togglable. A library maintainer reviews a whole component's surface in
     one screen.
@@ -293,7 +295,7 @@ nothing here forks core.
 
 1. **Fast Refresh is an example pattern, not a product**
    ([react-x11#317](https://github.com/sidorares/react-x11/issues/317)) —
-   *blocker for M2 only.* Core's `examples/hmr-*.mjs` show state-preserving
+   _blocker for M2 only._ Core's `examples/hmr-*.mjs` show state-preserving
    reload via Node ≥ 22.15 `module.registerHooks` + `react-refresh/babel`,
    with documented constraints (classic JSX transform, identity modules
    kept out of the hot graph). M1's watch-restart needs none of it; M2
@@ -301,13 +303,13 @@ nothing here forks core.
    get it too.
 2. **`registerElement` throws on hot re-registration**
    ([react-x11#318](https://github.com/sidorares/react-x11/issues/318)) —
-   *bites in M2.* Components register elements at module scope without
+   _bites in M2._ Components register elements at module scope without
    `override`, so a hot-re-imported module throws. The proposal upstream is
    tolerating identical re-registration (or a refresh-session flag); the
    workbench's loader can interpose in the meantime.
 3. **No plug-side embedding (`createRoot({ embedInto })`)**
    ([react-x11#316](https://github.com/sidorares/react-x11/issues/316)) —
-   *gated on M4.* Out-of-process story isolation (crash containment,
+   _gated on M4._ Out-of-process story isolation (crash containment,
    per-story element registries) wants a react-x11 root rendered into the
    workshop's window. Workable today from the other side — the story child
    opens a plain `<window>`, reports its id, the workshop embeds it with
@@ -315,17 +317,17 @@ nothing here forks core.
    and reports) — but the handshake and focus story want the real plug.
 4. **The mock backend has no text metrics**
    ([react-x11#319](https://github.com/sidorares/react-x11/issues/319)) —
-   *ergonomics.* A fonts-capable `createMockApp({ fonts })` would allow a
+   _ergonomics._ A fonts-capable `createMockApp({ fonts })` would allow a
    fast layout-only mode for large story matrices. The in-process X server
    is fast enough that this is an optimization, not a need.
-5. **No error overlay** — *not a gap after all.* `onUncaughtError` /
+5. **No error overlay** — _not a gap after all._ `onUncaughtError` /
    `setErrorHandler` are the right seams; the overlay is workbench UI, and
    arguably that is where it belongs.
 6. **Pin drift is policy, not accident.** Core HEAD already moved yoga
    in-package and dropped `<markdown>/<html>/<tex>` (breaking, by stated
    pre-release policy). The workbench pins by sha and treats every bump as
    named work. Not a gap — a constraint the design plans around.
-7. **`useWindowState` is ahead of the components pin** — *nice-to-have.*
+7. **`useWindowState` is ahead of the components pin** — _nice-to-have._
    Landed in core #313; useful for "is this story window actually visible"
    in the workshop. Arrives with the first natural pin bump.
 
@@ -398,9 +400,9 @@ types, discovery (`*.story.tsx` globs), `ls`, and `dev`: sidebar tree,
 preview with theme/direction/size toolbar, **split and grid compare
 views**, per-story error panel with owner chain and source location,
 watch-restart, `Activity` story cache, the nested-window preview spike.
-*Ship bar: a component-library author develops a new variant of `<Table>`
+_Ship bar: a component-library author develops a new variant of `<Table>`
 and reviews it against the existing variants side by side — edit, save,
-see — without writing an example app or leaving the workshop.*
+see — without writing an example app or leaving the workshop._
 
 **M2 — the live loop.** State-preserving Fast Refresh (react-x11#317, with
 the #318 re-registration policy), the knobs panel (`args`/`controls` with
