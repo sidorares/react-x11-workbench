@@ -25,12 +25,19 @@ export type StoryTheme = 'light' | 'dark' | 'both';
 export type StoryDirection = 'ltr' | 'rtl' | 'both';
 
 /**
- * A knob's editor. Declared, not inferred — an options array renders a
- * select, the rest name their input. Type extraction from props is a
+ * A knob's editor. An options array renders a radio group, the strings
+ * name their input, and the object form bounds a number — `min` and `max`
+ * together turn it into a slider. Declaring is optional where the initial
+ * arg's type already says it: a string arg infers 'text', a number
+ * 'number', a boolean 'boolean'. Type extraction from *props* is a
  * possible later rung (PRD §Open questions), never a requirement.
  */
 export type ControlSpec =
-  'number' | 'text' | 'boolean' | readonly (string | number)[];
+  | 'number'
+  | 'text'
+  | 'boolean'
+  | readonly (string | number)[]
+  | { type: 'number'; min?: number; max?: number; step?: number };
 
 export type ControlsFor<Args> = {
   readonly [K in keyof Args]?: ControlSpec;

@@ -15,6 +15,7 @@
 import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button, SplitPane, ThemeProvider } from 'react-x11';
 import { Tree } from '@react-x11/components/tree';
+import { controlEntries, ControlsPanel } from './controls.js';
 import {
   effectiveMeta,
   type DiscoveredFile,
@@ -81,6 +82,12 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
     scheme: Scheme;
   } | null>(null);
   const [bothThemes, setBothThemes] = useState(false);
+
+  // Live control edits, keyed by story row id: overrides over meta.args.
+  // Kept across story switches and reloads; Reset drops one story's.
+  const [overridesByRow, setOverridesByRow] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
 
   // Every file open by default; files a reload adds arrive open too, while
   // rows the user closed stay closed.
@@ -184,6 +191,19 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
             scheme={scheme}
             epoch={epoch}
             bothThemes={bothThemes}
+            overridesByRow={overridesByRow}
+            onArgChange={(rowId, key, value) =>
+              setOverridesByRow((prev) => ({
+                ...prev,
+                [rowId]: { ...prev[rowId], [key]: value },
+              }))
+            }
+            onResetArgs={(rowId) =>
+              setOverridesByRow((prev) => {
+                const { [rowId]: _dropped, ...rest } = prev;
+                return rest;
+              })
+            }
           />
         </box>
       </SplitPane>
@@ -260,6 +280,9 @@ function Main(props: {
   scheme: Scheme;
   epoch: number;
   bothThemes: boolean;
+  overridesByRow: Record<string, Record<string, unknown>>;
+  onArgChange: (rowId: string, key: string, value: unknown) => void;
+  onResetArgs: (rowId: string) => void;
 }): ReactNode {
   const {
     selected,
@@ -269,6 +292,9 @@ function Main(props: {
     scheme,
     epoch,
     bothThemes,
+    overridesByRow,
+    onArgChange,
+    onResetArgs,
   } = props;
 
   if (!selected) {
@@ -290,39 +316,77 @@ function Main(props: {
         scheme={scheme}
         bothThemes={bothThemes}
         epoch={epoch}
+        overridesByRow={overridesByRow}
       />
     );
   }
 
-  if (pinnedSelected?.story) {
-    return (
-      <SplitPane direction="row" defaultSize={430} min={220} minSecond={220}>
-        <ComparePane
-          title={`${pinnedSelected.file.id} · ${pinnedSelected.story.name}`}
-          action={
-            <Button
-              label={`pinned: ${pinnedScheme}`}
-              onPress={onTogglePinnedScheme}
-            />
-          }
-        >
-          <StoryFrame
-            file={pinnedSelected.file}
-            story={pinnedSelected.story}
-            scheme={pinnedScheme}
-            epoch={epoch}
+  const rowId = storyRowId(file, story);
+  const overrides = overridesByRow[rowId] ?? {};
+  const entries = controlEntries(story);
+
+  // In a split, the panel edits the *current* pane; the pinned pane reads
+  // its own row's overrides, so it only moves when both panes are the same
+  // story — which is then exactly what a same-story compare wants.
+  const content = pinnedSelected?.story ? (
+    <SplitPane direction="row" defaultSize={430} min={220} minSecond={220}>
+      <ComparePane
+        title={`${pinnedSelected.file.id} · ${pinnedSelected.story.name}`}
+        action={
+          <Button
+            label={`pinned: ${pinnedScheme}`}
+            onPress={onTogglePinnedScheme}
           />
-        </ComparePane>
-        <ComparePane title={`${file.id} · ${story.name}`}>
-          <StoryFrame file={file} story={story} scheme={scheme} epoch={epoch} />
-        </ComparePane>
-      </SplitPane>
-    );
-  }
+        }
+      >
+        <StoryFrame
+          file={pinnedSelected.file}
+          story={pinnedSelected.story}
+          scheme={pinnedScheme}
+          epoch={epoch}
+          overrides={
+            overridesByRow[
+              storyRowId(pinnedSelected.file, pinnedSelected.story)
+            ]
+          }
+        />
+      </ComparePane>
+      <ComparePane title={`${file.id} · ${story.name}`}>
+        <StoryFrame
+          file={file}
+          story={story}
+          scheme={scheme}
+          epoch={epoch}
+          overrides={overrides}
+        />
+      </ComparePane>
+    </SplitPane>
+  ) : (
+    <box style={{ flexGrow: 1, padding: 16, alignItems: 'flex-start' }}>
+      <StoryFrame
+        file={file}
+        story={story}
+        scheme={scheme}
+        epoch={epoch}
+        overrides={overrides}
+      />
+    </box>
+  );
 
   return (
-    <box style={{ flexGrow: 1, padding: 16, alignItems: 'flex-start' }}>
-      <StoryFrame file={file} story={story} scheme={scheme} epoch={epoch} />
+    <box style={{ flexGrow: 1, flexDirection: 'row', minHeight: 0 }}>
+      <box style={{ flexGrow: 1, flexDirection: 'column', minWidth: 0 }}>
+        {content}
+      </box>
+      {entries.length > 0 && (
+        <ControlsPanel
+          story={story}
+          entries={entries}
+          overrides={overrides}
+          onChange={(key, value) => onArgChange(rowId, key, value)}
+          onReset={() => onResetArgs(rowId)}
+        />
+      )}
     </box>
   );
 }
@@ -375,8 +439,9 @@ function GridPanel(props: {
   scheme: Scheme;
   bothThemes: boolean;
   epoch: number;
+  overridesByRow: Record<string, Record<string, unknown>>;
 }): ReactNode {
-  const { file, scheme, bothThemes, epoch } = props;
+  const { file, scheme, bothThemes, epoch, overridesByRow } = props;
 
   if (file.error !== undefined) {
     return (
@@ -432,6 +497,7 @@ function GridPanel(props: {
                 story={story}
                 scheme={cellScheme}
                 epoch={epoch}
+                overrides={overridesByRow[storyRowId(file, story)]}
               />
             </box>
           )),
@@ -464,8 +530,9 @@ function StoryFrame(props: {
   story: DiscoveredStory;
   scheme: Scheme;
   epoch: number;
+  overrides?: Record<string, unknown>;
 }): ReactNode {
-  const { file, story, scheme, epoch } = props;
+  const { file, story, scheme, epoch, overrides } = props;
   const meta = effectiveMeta(file, story);
   const frame = meta.size
     ? { width: meta.size.width, height: meta.size.height }
@@ -486,20 +553,25 @@ function StoryFrame(props: {
         <StoryBoundary
           key={`${file.id}#${story.exportName}:${scheme}:${epoch}`}
         >
-          <StoryView story={story} />
+          <StoryView story={story} overrides={overrides} />
         </StoryBoundary>
       </box>
     </ThemeProvider>
   );
 }
 
-function StoryView(props: { story: DiscoveredStory }): ReactNode {
-  const { story } = props;
+function StoryView(props: {
+  story: DiscoveredStory;
+  overrides?: Record<string, unknown>;
+}): ReactNode {
+  const { story, overrides } = props;
   // Mounted as a component, not called as a function: a story is a
   // component and its args are props, so hooks inside it get their own
-  // identity instead of leaking into StoryView's.
+  // identity instead of leaking into StoryView's. Control edits arrive as
+  // overrides over meta.args — new props, same mount, so story state
+  // survives the tweaking.
   const Render = story.render;
-  return <Render {...(story.meta.args ?? {})} />;
+  return <Render {...(story.meta.args ?? {})} {...(overrides ?? {})} />;
 }
 
 /**

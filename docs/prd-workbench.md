@@ -405,8 +405,9 @@ and reviews it against the existing variants side by side — edit, save,
 see — without writing an example app or leaving the workshop._
 
 **M2 — the live loop.** State-preserving Fast Refresh (react-x11#317, with
-the #318 re-registration policy), the knobs panel (`args`/`controls` with
-`CodeEditor` for object args), the inspector (`inspect()`-driven
+the #318 re-registration policy), the knobs panel grown past its shipped
+basics (`CodeEditor` for object args; the basic panel — declared +
+type-inferred controls, live overrides — landed with M1), the inspector (`inspect()`-driven
 props/hooks, DevTools passthrough), `play` functions runnable from the
 workshop.
 

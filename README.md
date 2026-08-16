@@ -15,7 +15,9 @@ light/dark toggle, per-story error containment, watch-restart on file
 changes, and the compare views: selecting a file shows every story of it
 as a labelled grid (optionally light beside dark), and Pin holds a story
 in a split pane — with its own theme — while the sidebar changes the
-other.
+other. A story with `args` gets a controls panel: text, number (slider
+when bounded), switch and options editors, inferred from the args or
+declared in `controls`, editing the running story live.
 
 ```tsx
 // stories/table.story.tsx
@@ -34,7 +36,7 @@ export const multiSelect = story(
 );
 ```
 
-Still to come, per the PRD: the live loop with Fast Refresh, knobs and the inspector
+Still to come, per the PRD: the live loop with Fast Refresh, richer knobs and the inspector
 (M2), and `x11-workbench capture` (headless PNGs and visual diffing over
 the same story files — M3). The scope is component libraries: a story is
 something that renders inside another react-x11 component, so a story
