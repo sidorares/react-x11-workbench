@@ -26,5 +26,5 @@
     "types": ["node"],
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src"]
+  "include": ["src", "test"]
 }

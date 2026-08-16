@@ -4,10 +4,12 @@ The component workshop for [react-x11](https://github.com/sidorares/react-x11):
 develop, test and compare components in isolation — the problem Storybook
 solves, solved natively for X11.
 
-Status: **design**. The design is the PRD at
+Status: **design, M1 in progress**. The design is the PRD at
 [docs/prd-workbench.md](docs/prd-workbench.md); the package currently ships
-only the story contract (`@react-x11/workbench/story`), the zero-dependency
-types that story files import.
+the story contract (`@react-x11/workbench/story`, the zero-dependency types
+that story files import), the discovery module
+(`@react-x11/workbench/discovery`, globs → the story model), and
+`x11-workbench ls` over it.
 
 ```tsx
 // stories/table.story.tsx

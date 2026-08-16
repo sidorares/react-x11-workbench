@@ -2,10 +2,12 @@
 // map kinds — `files` ships `src` alongside `dist` so the maps resolve and
 // "go to definition" lands on the TypeScript a consumer's editor can read.
 //
-// `types: []` is deliberate: nothing that ships may depend on `@types/node`.
-// The story contract in particular is imported by consumers' story files,
-// and a stray `process` or `Buffer` in `src/` should fail here rather than
-// at a consumer's `tsc`.
+// Unlike react-x11-components, `types: ["node"]` stays on in the build:
+// this package's discovery and CLI surfaces are Node-facing on purpose.
+// The constraint that survives is narrower — `src/story/` must stay free
+// of node builtins and globals, because story files import it and the M4
+// browser publish target bundles it. That is a review rule (and a future
+// guard test), not a compiler setting.
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -14,8 +16,7 @@
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
-    "types": []
+    "sourceMap": true
   },
   "include": ["src"]
 }
