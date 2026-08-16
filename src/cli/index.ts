@@ -13,7 +13,7 @@ import { discover, type Discovery } from '../discovery/index.js';
 register();
 
 function usage(): never {
-  console.error('usage: x11-workbench ls [--json] [root]');
+  console.error('usage: x11-workbench <ls|dev> [--json] [root]');
   process.exit(2);
 }
 
@@ -22,8 +22,30 @@ switch (command) {
   case 'ls':
     await ls(rest);
     break;
+  case 'dev':
+    await dev(rest);
+    break;
   default:
     usage();
+}
+
+async function dev(argv: string[]): Promise<void> {
+  if (argv.some((arg) => arg.startsWith('--'))) usage();
+  if (argv.length > 1) usage();
+  // Imported lazily: the workshop pulls in react-x11 and the components
+  // package, none of which `ls` should pay for.
+  const { runDev } = await import('../dev/index.js');
+  try {
+    await runDev({ root: argv[0] });
+  } catch (error) {
+    console.error(
+      'could not start the workshop:',
+      error instanceof Error ? error.message : String(error),
+    );
+    console.error('(the workshop needs a running X server — is $DISPLAY set?)');
+    process.exit(1);
+  }
+  console.log('workshop running — watching for story changes (ctrl-c quits)');
 }
 
 async function ls(argv: string[]): Promise<void> {

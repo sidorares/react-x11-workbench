@@ -4,12 +4,15 @@ The component workshop for [react-x11](https://github.com/sidorares/react-x11):
 develop, test and compare components in isolation — the problem Storybook
 solves, solved natively for X11.
 
-Status: **design, M1 in progress**. The design is the PRD at
+Status: **M1 in progress**. The design is the PRD at
 [docs/prd-workbench.md](docs/prd-workbench.md); the package currently ships
 the story contract (`@react-x11/workbench/story`, the zero-dependency types
 that story files import), the discovery module
-(`@react-x11/workbench/discovery`, globs → the story model), and
-`x11-workbench ls` over it.
+(`@react-x11/workbench/discovery`, globs → the story model),
+`x11-workbench ls`, and the first cut of the workshop itself:
+`x11-workbench dev` — sidebar over the discovered stories, preview pane,
+light/dark toggle, per-story error containment, and watch-restart on file
+changes.
 
 ```tsx
 // stories/table.story.tsx
@@ -28,6 +31,11 @@ export const multiSelect = story(
 );
 ```
 
-Planned surfaces, per the PRD: `x11-workbench dev` (the workshop GUI — M1),
-the live loop with Fast Refresh and knobs (M2), `x11-workbench capture`
-(headless PNGs and visual diffing over the same story files — M3).
+Still to come, per the PRD: the compare views and nested-window preview
+(rest of M1), the live loop with Fast Refresh, knobs and the inspector
+(M2), and `x11-workbench capture` (headless PNGs and visual diffing over
+the same story files — M3).
+
+`@react-x11/components` is consumed from a git pin (it is not published
+yet); `scripts/prepare-components.mjs` builds the slice the workbench
+imports on postinstall, until upstream gains a `prepare` script.

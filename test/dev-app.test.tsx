@@ -1,0 +1,194 @@
+// The workshop shell, rendered headless by react-x11/test — the same
+// harness the capture CLI will ride. The discovery model is hand-built:
+// the shell's contract is "render whatever discovery says", so tests say
+// it directly.
+
+import assert from 'node:assert/strict';
+import { after, test } from 'node:test';
+import { act, cleanup, renderX11, userEvent, waitFor } from 'react-x11/test';
+import { WorkbenchApp } from '../src/dev/app.js';
+import type {
+  DiscoveredFile,
+  Discovery,
+  ResolvedWorkbenchConfig,
+} from '../src/discovery/index.js';
+import { story } from '../src/story/index.js';
+
+const config: ResolvedWorkbenchConfig = {
+  stories: ['**/*.story.tsx'],
+  decorators: [],
+  themes: {},
+  sizes: { default: { width: 640, height: 480 } },
+  fonts: {},
+  captureDir: '__screenshots__',
+  path: null,
+};
+
+function file(
+  partial: Partial<DiscoveredFile> & { id: string },
+): DiscoveredFile {
+  return {
+    file: `/fake/${partial.id}`,
+    title: partial.id.replace(/\.story\.tsx$/, ''),
+    meta: {},
+    stories: [],
+    diagnostics: [],
+    ...partial,
+  };
+}
+
+function model(files: DiscoveredFile[]): Discovery {
+  return {
+    root: '/fake',
+    config,
+    files,
+    diagnostics: files.flatMap((f) => f.diagnostics),
+  };
+}
+
+const alpha = file({
+  id: 'alpha.story.tsx',
+  title: 'Alpha',
+  stories: [
+    {
+      exportName: 'one',
+      name: 'one',
+      meta: {},
+      render: () => <text>alpha one lives</text>,
+      wrapped: false,
+    },
+    {
+      exportName: 'two',
+      name: 'Two named',
+      meta: story(() => null, { name: 'Two named' }).meta,
+      render: () => <text>alpha two lives</text>,
+      wrapped: true,
+    },
+  ],
+});
+
+const broken = file({
+  id: 'broken.story.tsx',
+  title: 'broken',
+  error: new Error('kaput at import'),
+  diagnostics: [
+    { file: 'broken.story.tsx', message: 'failed to import: kaput at import' },
+  ],
+});
+
+const angry = file({
+  id: 'angry.story.tsx',
+  title: 'angry',
+  stories: [
+    {
+      exportName: 'boom',
+      name: 'boom',
+      meta: {},
+      render: () => {
+        throw new Error('render boom');
+      },
+      wrapped: false,
+    },
+  ],
+});
+
+after(() => cleanup());
+
+test('the sidebar lists files and stories; selecting one previews it', async () => {
+  const r = await renderX11(<WorkbenchApp initial={model([alpha, broken])} />, {
+    wrap: false,
+  });
+
+  // Files open by default: story rows are visible without a click.
+  r.getByText('Alpha');
+  r.getByText('broken (failed)');
+  const row = r.getByText('Two named');
+
+  assert.equal(r.queryByText('alpha two lives'), null);
+  await userEvent.click(row);
+  await r.findByText('alpha two lives');
+  await r.unmount();
+});
+
+test('a file that failed to import shows its error, not a crash', async () => {
+  const r = await renderX11(<WorkbenchApp initial={model([alpha, broken])} />, {
+    wrap: false,
+  });
+
+  await userEvent.click(r.getByText('broken (failed)'));
+  // Both the stack panel and the diagnostic mention it; either proves the
+  // error is on screen.
+  const hits = await waitFor(() => r.getAllByText(/kaput at import/));
+  assert.ok(hits.length >= 1);
+  // The shell is still alive around the panel.
+  r.getByText('Alpha');
+  await r.unmount();
+});
+
+test('a story that throws in render is contained by the boundary', async () => {
+  const r = await renderX11(<WorkbenchApp initial={model([angry, alpha])} />, {
+    wrap: false,
+  });
+
+  await userEvent.click(r.getByText('boom'));
+  await r.findByText('story crashed');
+  await r.findByText(/render boom/);
+
+  // Another story still renders after the crash. Exact: the boundary's
+  // stack text would substring-match a bare 'one'.
+  await userEvent.click(r.getByText('one', { exact: true }));
+  await r.findByText('alpha one lives');
+  await r.unmount();
+});
+
+test('the theme toggle flips its own label', async () => {
+  const r = await renderX11(<WorkbenchApp initial={model([alpha])} />, {
+    wrap: false,
+  });
+
+  await userEvent.click(r.getByText('one'));
+  await r.findByText('alpha one lives');
+  await userEvent.click(r.getByRole('button', { name: 'Dark' }));
+  await r.findByRole('button', { name: 'Light' });
+  await r.unmount();
+});
+
+test('a subscribed update reaches the sidebar and remounts the preview', async () => {
+  let push: ((next: Discovery) => void) | null = null;
+  const subscribe = (listener: (next: Discovery) => void) => {
+    push = listener;
+    return () => {
+      push = null;
+    };
+  };
+
+  const r = await renderX11(
+    <WorkbenchApp initial={model([alpha])} subscribe={subscribe} />,
+    { wrap: false },
+  );
+
+  await userEvent.click(r.getByText('one'));
+  await r.findByText('alpha one lives');
+
+  const reloadedAlpha = file({
+    ...alpha,
+    stories: [
+      {
+        exportName: 'one',
+        name: 'one',
+        meta: {},
+        render: () => <text>alpha one reloaded</text>,
+        wrapped: false,
+      },
+    ],
+  });
+  const added = file({ id: 'zeta.story.tsx', title: 'Zeta' });
+
+  assert.ok(push, 'the app subscribed');
+  await act(() => push!(model([reloadedAlpha, added])));
+
+  await waitFor(() => r.getByText('Zeta'));
+  await r.findByText('alpha one reloaded');
+  assert.equal(r.queryByText('alpha one lives'), null);
+  await r.unmount();
+});
