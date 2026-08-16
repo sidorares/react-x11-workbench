@@ -220,13 +220,13 @@ workbench is the best stress test the ecosystem has, and it eats core's
 
 - **Sidebar**: core's `<Tree>` over files → stories, type-ahead included.
 - **Preview**: the story mounted inside a `<box>`, with theme, direction
-  and size wrappers applied by the toolbar. A story whose root is a
-  `<window>` mounts as a **nested `<window>`** — core supports child
-  windows inside windows (never inside boxes); its `width`/`height` props
-  become the preview size. The nested-window edges (focus, decorations)
-  get M1 spike time; the fallback is opening such stories as positioned
-  toplevels beside the workshop (`transientFor`), which is how a
-  multi-window app behaves anyway.
+  and size wrappers applied by the toolbar. Component stories are the
+  scope (decided 2026-08-16): a story is something that renders inside
+  another react-x11 component, the way a library component renders inside
+  an app. A story whose root is a `<window>` — a whole application — is
+  out of the main scope: the error boundary names it, and any
+  window-preview affordance (nested windows, positioned toplevels) is a
+  later nice-to-have, not an M1 item.
 - **Compare view** — the reason this tool exists ahead of capture. Two
   modes, both consuming plain named exports:
   - _Split_: any two stories — or one story under two themes, two
@@ -399,7 +399,7 @@ workbench). Type tests pin `StoryMeta` and the `story()` overloads.
 types, discovery (`*.story.tsx` globs), `ls`, and `dev`: sidebar tree,
 preview with theme/direction/size toolbar, **split and grid compare
 views**, per-story error panel with owner chain and source location,
-watch-restart, `Activity` story cache, the nested-window preview spike.
+watch-restart, `Activity` story cache.
 _Ship bar: a component-library author develops a new variant of `<Table>`
 and reviews it against the existing variants side by side — edit, save,
 see — without writing an example app or leaving the workshop._
@@ -449,10 +449,11 @@ docs-site image automation, a diff-review UI for `--diff` failures.
   yoga/document-elements change already shows the shape. Mitigation is the
   components repo's own: sha pins, named bumps, and M1 needing no new core
   features.
-- **Nested-`<window>` preview has WM-shaped edges.** Child windows are
-  real X windows; decorations, focus and size behaviour inside the preview
-  need M1 spike time. Fallback: window-rooted stories open as positioned
-  toplevels beside the workshop (`transientFor`).
+- **Window-rooted stories ask for scope creep.** Retired by the
+  2026-08-16 decision: the workbench previews components, not whole apps;
+  a `<window>`-rooted story is named by the error panel, and embedding
+  one (nested windows, `transientFor` toplevels, or #316's plug side)
+  waits for a real demand.
 - **Fast Refresh fragility (M2).** `module.registerHooks` requires Node ≥
   22.15; the classic-JSX and identity-module constraints are subtle; a
   stale-state bug erodes trust in the whole tool. Mitigation:

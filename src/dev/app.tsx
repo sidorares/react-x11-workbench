@@ -495,15 +495,19 @@ function StoryFrame(props: {
 
 function StoryView(props: { story: DiscoveredStory }): ReactNode {
   const { story } = props;
-  return <>{story.render(story.meta.args ?? {})}</>;
+  // Mounted as a component, not called as a function: a story is a
+  // component and its args are props, so hooks inside it get their own
+  // identity instead of leaking into StoryView's.
+  const Render = story.render;
+  return <Render {...(story.meta.args ?? {})} />;
 }
 
 /**
  * Per-story containment: a story that throws in render becomes a panel,
- * not a dead workshop. This includes the (for now) unsupported case of a
- * story whose root is a `<window>` — mounting one inside the preview box
- * throws, and the panel is where that is explained until the
- * nested-window preview lands.
+ * not a dead workshop. This also names the out-of-scope case: the
+ * workbench previews components — something that renders inside another
+ * react-x11 component — and a story whose root is a `<window>` (a whole
+ * app) throws here rather than being embedded (decided 2026-08-16).
  */
 class StoryBoundary extends Component<
   { children: ReactNode },

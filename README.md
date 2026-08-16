@@ -34,9 +34,12 @@ export const multiSelect = story(
 );
 ```
 
-Still to come, per the PRD: the nested-window preview spike (rest of M1), the live loop with Fast Refresh, knobs and the inspector
+Still to come, per the PRD: the live loop with Fast Refresh, knobs and the inspector
 (M2), and `x11-workbench capture` (headless PNGs and visual diffing over
-the same story files — M3).
+the same story files — M3). The scope is component libraries: a story is
+something that renders inside another react-x11 component, so a story
+whose root is a `<window>` (a whole app) is named by the error panel
+rather than embedded.
 
 `@react-x11/components` is consumed from a git pin (it is not published
 yet); `scripts/prepare-components.mjs` builds the slice the workbench

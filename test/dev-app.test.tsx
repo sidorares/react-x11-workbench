@@ -5,6 +5,8 @@
 
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
+import { useState } from 'react';
+import { Button } from 'react-x11';
 import { act, cleanup, renderX11, userEvent, waitFor } from 'react-x11/test';
 import { WorkbenchApp } from '../src/dev/app.js';
 import type {
@@ -150,6 +152,40 @@ test('the theme toggle flips its own label', async () => {
   await r.findByText('alpha one lives');
   await userEvent.click(r.getByRole('button', { name: 'Dark' }));
   await r.findByRole('button', { name: 'Light' });
+  await r.unmount();
+});
+
+test('an interactive story owns its hook state', async () => {
+  const stateful = file({
+    id: 'stateful.story.tsx',
+    title: 'Stateful',
+    stories: [
+      {
+        exportName: 'counter',
+        name: 'counter',
+        meta: {},
+        wrapped: false,
+        render: () => {
+          const [n, setN] = useState(0);
+          return (
+            <box style={{ gap: 8 }}>
+              <text>{`count is ${n}`}</text>
+              <Button label="inc" onPress={() => setN(n + 1)} />
+            </box>
+          );
+        },
+      },
+    ],
+  });
+
+  const r = await renderX11(<WorkbenchApp initial={model([stateful])} />, {
+    wrap: false,
+  });
+
+  await userEvent.click(r.getByText('counter'));
+  await r.findByText('count is 0');
+  await userEvent.click(r.getByRole('button', { name: 'inc' }));
+  await r.findByText('count is 1');
   await r.unmount();
 });
 
