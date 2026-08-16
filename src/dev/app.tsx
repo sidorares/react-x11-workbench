@@ -1,7 +1,16 @@
 // The workshop window: sidebar over the discovery model, preview pane,
-// theme toolbar, and error containment. Pure UI — discovery and watching
-// happen outside (src/dev/index.tsx) and arrive through props, which is
-// what lets the whole shell render headless under react-x11/test.
+// theme toolbar, the compare views, and error containment. Pure UI —
+// discovery and watching happen outside (src/dev/index.tsx) and arrive
+// through props, which is what lets the whole shell render headless under
+// react-x11/test.
+//
+// The two compare views (PRD §The workshop GUI):
+// - grid: selecting a *file* shows every story of it at once, in labelled
+//   cells, optionally under both themes — the timeline example's
+//   hand-built Gallery, formalized;
+// - split: Pin holds the current story in one pane while the sidebar
+//   changes the other, each pane owning its own theme — which is also how
+//   one story is compared against itself in light and dark.
 
 import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button, SplitPane, ThemeProvider } from 'react-x11';
@@ -21,9 +30,12 @@ export interface WorkbenchAppProps {
   onQuit?: () => void;
 }
 
+type Scheme = 'light' | 'dark';
+
 // Sidebar ids: a file row is `file:<id>`, a story row `story:<id>#<export>`.
 // Strings on purpose — they survive a reload, which object identity would
-// not, and selection is restored by re-finding the same id in the new model.
+// not, and selection (and the pin) is restored by re-finding the same id in
+// the new model.
 const fileRowId = (file: DiscoveredFile) => `file:${file.id}`;
 const storyRowId = (file: DiscoveredFile, story: DiscoveredStory) =>
   `story:${file.id}#${story.exportName}`;
@@ -63,27 +75,34 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
   }, [subscribe]);
 
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
-  const [scheme, setScheme] = useState<'light' | 'dark'>('light');
+  const [scheme, setScheme] = useState<Scheme>('light');
+  const [pinned, setPinned] = useState<{
+    rowId: string;
+    scheme: Scheme;
+  } | null>(null);
+  const [bothThemes, setBothThemes] = useState(false);
 
   // Every file open by default; files a reload adds arrive open too, while
   // rows the user closed stay closed.
   const [expanded, setExpanded] = useState<readonly (string | number)[]>(() =>
     initial.files.map(fileRowId),
   );
-  const known = useMemo(
-    () => new Set(discovery.files.map(fileRowId)),
-    [discovery],
-  );
   useEffect(() => {
     setExpanded((prev) => {
       const seen = new Set(prev);
       const fresh = discovery.files
         .map(fileRowId)
-        .filter((id) => !seen.has(id) && known.has(id));
+        .filter((id) => !seen.has(id));
       return fresh.length > 0 ? [...prev, ...fresh] : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discovery]);
+
+  // A pin outlives reloads by id; a story the reload removed unpins.
+  useEffect(() => {
+    if (pinned && !findSelected(discovery, pinned.rowId)?.story) {
+      setPinned(null);
+    }
+  }, [discovery, pinned]);
 
   const items = useMemo(
     () =>
@@ -99,6 +118,7 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
   );
 
   const selected = findSelected(discovery, selectedRow);
+  const pinnedSelected = pinned ? findSelected(discovery, pinned.rowId) : null;
 
   return (
     <window
@@ -139,8 +159,32 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
             onToggleScheme={() =>
               setScheme((s) => (s === 'light' ? 'dark' : 'light'))
             }
+            pinned={pinned !== null}
+            onTogglePin={() => {
+              if (pinned) {
+                setPinned(null);
+              } else if (selected?.story && selectedRow) {
+                setPinned({ rowId: selectedRow, scheme });
+              }
+            }}
+            bothThemes={bothThemes}
+            onToggleBothThemes={() => setBothThemes((b) => !b)}
           />
-          <Main selected={selected} scheme={scheme} epoch={epoch} />
+          <Main
+            selected={selected}
+            pinnedSelected={pinnedSelected?.story ? pinnedSelected : null}
+            pinnedScheme={pinned?.scheme ?? 'light'}
+            onTogglePinnedScheme={() =>
+              setPinned((p) =>
+                p
+                  ? { ...p, scheme: p.scheme === 'light' ? 'dark' : 'light' }
+                  : p,
+              )
+            }
+            scheme={scheme}
+            epoch={epoch}
+            bothThemes={bothThemes}
+          />
         </box>
       </SplitPane>
     </window>
@@ -149,20 +193,37 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
 
 function Toolbar(props: {
   selected: Selected | null;
-  scheme: 'light' | 'dark';
+  scheme: Scheme;
   onToggleScheme: () => void;
+  pinned: boolean;
+  onTogglePin: () => void;
+  bothThemes: boolean;
+  onToggleBothThemes: () => void;
 }): ReactNode {
-  const { selected, scheme, onToggleScheme } = props;
+  const {
+    selected,
+    scheme,
+    onToggleScheme,
+    pinned,
+    onTogglePin,
+    bothThemes,
+    onToggleBothThemes,
+  } = props;
   const label = selected
     ? selected.story
       ? `${selected.file.id} · ${selected.story.name}`
       : selected.file.id
     : '';
+  const gridControls =
+    selected !== null &&
+    selected.story === null &&
+    selected.file.stories.length > 0;
   return (
     <box
       style={{
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
         paddingStart: 12,
         paddingEnd: 12,
         paddingTop: 6,
@@ -174,6 +235,15 @@ function Toolbar(props: {
       <text style={{ color: '$textMuted', fontSize: 12, flexGrow: 1 }}>
         {label}
       </text>
+      {(selected?.story || pinned) && (
+        <Button label={pinned ? 'Unpin' : 'Pin'} onPress={onTogglePin} />
+      )}
+      {gridControls && (
+        <Button
+          label={bothThemes ? 'One theme' : 'Both themes'}
+          onPress={onToggleBothThemes}
+        />
+      )}
       <Button
         label={scheme === 'light' ? 'Dark' : 'Light'}
         onPress={onToggleScheme}
@@ -184,10 +254,22 @@ function Toolbar(props: {
 
 function Main(props: {
   selected: Selected | null;
-  scheme: 'light' | 'dark';
+  pinnedSelected: Selected | null;
+  pinnedScheme: Scheme;
+  onTogglePinnedScheme: () => void;
+  scheme: Scheme;
   epoch: number;
+  bothThemes: boolean;
 }): ReactNode {
-  const { selected, scheme, epoch } = props;
+  const {
+    selected,
+    pinnedSelected,
+    pinnedScheme,
+    onTogglePinnedScheme,
+    scheme,
+    epoch,
+    bothThemes,
+  } = props;
 
   if (!selected) {
     return (
@@ -202,51 +284,168 @@ function Main(props: {
   const { file, story } = selected;
 
   if (story === null) {
-    return <FilePanel file={file} />;
+    return (
+      <GridPanel
+        file={file}
+        scheme={scheme}
+        bothThemes={bothThemes}
+        epoch={epoch}
+      />
+    );
   }
 
-  const meta = effectiveMeta(file, story);
-  const frame = meta.size
-    ? { width: meta.size.width, height: meta.size.height }
-    : { alignSelf: 'stretch' as const, flexGrow: 1 };
+  if (pinnedSelected?.story) {
+    return (
+      <SplitPane direction="row" defaultSize={430} min={220} minSecond={220}>
+        <ComparePane
+          title={`${pinnedSelected.file.id} · ${pinnedSelected.story.name}`}
+          action={
+            <Button
+              label={`pinned: ${pinnedScheme}`}
+              onPress={onTogglePinnedScheme}
+            />
+          }
+        >
+          <StoryFrame
+            file={pinnedSelected.file}
+            story={pinnedSelected.story}
+            scheme={pinnedScheme}
+            epoch={epoch}
+          />
+        </ComparePane>
+        <ComparePane title={`${file.id} · ${story.name}`}>
+          <StoryFrame file={file} story={story} scheme={scheme} epoch={epoch} />
+        </ComparePane>
+      </SplitPane>
+    );
+  }
 
   return (
     <box style={{ flexGrow: 1, padding: 16, alignItems: 'flex-start' }}>
-      <ThemeProvider colorScheme={scheme} style={{ ...frame }}>
-        <box
-          data-testname="workbench-preview"
-          style={{
-            flexGrow: 1,
-            backgroundColor: '$background',
-            borderWidth: 1,
-            borderColor: '$border',
-            padding: 12,
-          }}
-        >
-          <StoryBoundary key={`${file.id}#${story.exportName}:${epoch}`}>
-            <StoryView story={story} />
-          </StoryBoundary>
-        </box>
-      </ThemeProvider>
+      <StoryFrame file={file} story={story} scheme={scheme} epoch={epoch} />
     </box>
   );
 }
 
-/** The file view: its error when importing failed, its diagnostics always. */
-function FilePanel(props: { file: DiscoveredFile }): ReactNode {
-  const { file } = props;
+function ComparePane(props: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}): ReactNode {
+  const { title, action, children } = props;
   return (
-    <box style={{ flexGrow: 1, padding: 16, flexDirection: 'column' }}>
-      {file.error !== undefined ? (
+    <box style={{ flexDirection: 'column', flexGrow: 1, minWidth: 0 }}>
+      <box
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          paddingStart: 12,
+          paddingEnd: 12,
+          paddingTop: 4,
+          paddingBottom: 4,
+        }}
+      >
+        <text style={{ color: '$textMuted', fontSize: 11, flexGrow: 1 }}>
+          {title}
+        </text>
+        {action}
+      </box>
+      <box
+        style={{
+          flexGrow: 1,
+          overflow: 'scroll',
+          padding: 12,
+          alignItems: 'flex-start',
+        }}
+      >
+        {children}
+      </box>
+    </box>
+  );
+}
+
+/**
+ * The grid: every story of one file at once — and with `bothThemes`, every
+ * story twice, light beside dark. Cells take their width from the story's
+ * declared size, with a readable default for the undeclared.
+ */
+function GridPanel(props: {
+  file: DiscoveredFile;
+  scheme: Scheme;
+  bothThemes: boolean;
+  epoch: number;
+}): ReactNode {
+  const { file, scheme, bothThemes, epoch } = props;
+
+  if (file.error !== undefined) {
+    return (
+      <box style={{ flexGrow: 1, padding: 16, flexDirection: 'column' }}>
         <ErrorPanel
           heading={`${file.id} failed to import`}
           error={file.error}
         />
-      ) : (
-        <text style={{ color: '$textMuted' }}>
-          {`${file.stories.length} ${file.stories.length === 1 ? 'story' : 'stories'}`}
-        </text>
-      )}
+        <Diagnostics file={file} />
+      </box>
+    );
+  }
+
+  if (file.stories.length === 0) {
+    return (
+      <box style={{ flexGrow: 1, padding: 16, flexDirection: 'column' }}>
+        <text style={{ color: '$textMuted' }}>no stories in this file</text>
+        <Diagnostics file={file} />
+      </box>
+    );
+  }
+
+  const schemes: Scheme[] = bothThemes ? ['light', 'dark'] : [scheme];
+
+  return (
+    <box style={{ flexGrow: 1, overflow: 'scroll', padding: 16 }}>
+      <box
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 16,
+          alignItems: 'flex-start',
+        }}
+      >
+        {file.stories.flatMap((story) =>
+          schemes.map((cellScheme) => (
+            <box
+              key={`${story.exportName}:${cellScheme}`}
+              style={{
+                flexDirection: 'column',
+                width: effectiveMeta(file, story).size?.width ?? 340,
+              }}
+            >
+              <text
+                style={{ color: '$textMuted', fontSize: 11, marginBottom: 4 }}
+              >
+                {schemes.length > 1
+                  ? `${story.name} · ${cellScheme}`
+                  : story.name}
+              </text>
+              <StoryFrame
+                file={file}
+                story={story}
+                scheme={cellScheme}
+                epoch={epoch}
+              />
+            </box>
+          )),
+        )}
+      </box>
+      <Diagnostics file={file} />
+    </box>
+  );
+}
+
+function Diagnostics(props: { file: DiscoveredFile }): ReactNode {
+  const { file } = props;
+  return (
+    <>
       {file.diagnostics.map((diagnostic, index) => (
         <text
           key={index}
@@ -255,7 +454,42 @@ function FilePanel(props: { file: DiscoveredFile }): ReactNode {
           {diagnostic.message}
         </text>
       ))}
-    </box>
+    </>
+  );
+}
+
+/** One story in its themed, bordered frame — the unit every view shares. */
+function StoryFrame(props: {
+  file: DiscoveredFile;
+  story: DiscoveredStory;
+  scheme: Scheme;
+  epoch: number;
+}): ReactNode {
+  const { file, story, scheme, epoch } = props;
+  const meta = effectiveMeta(file, story);
+  const frame = meta.size
+    ? { width: meta.size.width, height: meta.size.height }
+    : { alignSelf: 'stretch' as const, flexGrow: 1 };
+
+  return (
+    <ThemeProvider colorScheme={scheme} style={{ ...frame }}>
+      <box
+        data-testname="workbench-preview"
+        style={{
+          flexGrow: 1,
+          backgroundColor: '$background',
+          borderWidth: 1,
+          borderColor: '$border',
+          padding: 12,
+        }}
+      >
+        <StoryBoundary
+          key={`${file.id}#${story.exportName}:${scheme}:${epoch}`}
+        >
+          <StoryView story={story} />
+        </StoryBoundary>
+      </box>
+    </ThemeProvider>
   );
 }
 

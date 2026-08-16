@@ -11,8 +11,11 @@ that story files import), the discovery module
 (`@react-x11/workbench/discovery`, globs → the story model),
 `x11-workbench ls`, and the first cut of the workshop itself:
 `x11-workbench dev` — sidebar over the discovered stories, preview pane,
-light/dark toggle, per-story error containment, and watch-restart on file
-changes.
+light/dark toggle, per-story error containment, watch-restart on file
+changes, and the compare views: selecting a file shows every story of it
+as a labelled grid (optionally light beside dark), and Pin holds a story
+in a split pane — with its own theme — while the sidebar changes the
+other.
 
 ```tsx
 // stories/table.story.tsx
@@ -31,8 +34,7 @@ export const multiSelect = story(
 );
 ```
 
-Still to come, per the PRD: the compare views and nested-window preview
-(rest of M1), the live loop with Fast Refresh, knobs and the inspector
+Still to come, per the PRD: the nested-window preview spike (rest of M1), the live loop with Fast Refresh, knobs and the inspector
 (M2), and `x11-workbench capture` (headless PNGs and visual diffing over
 the same story files — M3).
 

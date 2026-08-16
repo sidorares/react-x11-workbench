@@ -153,6 +153,71 @@ test('the theme toggle flips its own label', async () => {
   await r.unmount();
 });
 
+test('grid: selecting a file shows every story of it at once', async () => {
+  const r = await renderX11(<WorkbenchApp initial={model([alpha])} />, {
+    wrap: false,
+  });
+
+  await userEvent.click(r.getByText('Alpha'));
+  await r.findByText('alpha one lives');
+  await r.findByText('alpha two lives');
+  await r.unmount();
+});
+
+test('grid: the theme axis doubles the cells with labelled schemes', async () => {
+  const r = await renderX11(<WorkbenchApp initial={model([alpha])} />, {
+    wrap: false,
+  });
+
+  await userEvent.click(r.getByText('Alpha'));
+  await r.findByText('alpha one lives');
+  assert.equal(r.getAllByText('alpha one lives').length, 1);
+
+  await userEvent.click(r.getByRole('button', { name: 'Both themes' }));
+  await waitFor(() => {
+    assert.equal(r.getAllByText('alpha one lives').length, 2);
+    assert.equal(r.getAllByText('alpha two lives').length, 2);
+  });
+  r.getByText('one · light');
+  r.getByText('one · dark');
+
+  await userEvent.click(r.getByRole('button', { name: 'One theme' }));
+  await waitFor(() =>
+    assert.equal(r.getAllByText('alpha one lives').length, 1),
+  );
+  await r.unmount();
+});
+
+test('split: pin holds one story while the sidebar changes the other', async () => {
+  const r = await renderX11(<WorkbenchApp initial={model([alpha])} />, {
+    wrap: false,
+  });
+
+  await userEvent.click(r.getByText('one', { exact: true }));
+  await r.findByText('alpha one lives');
+  await userEvent.click(r.getByRole('button', { name: 'Pin' }));
+
+  // Pinned == current: the same story sits in both panes.
+  await waitFor(() =>
+    assert.equal(r.getAllByText('alpha one lives').length, 2),
+  );
+
+  // The sidebar now changes only the second pane.
+  await userEvent.click(r.getByText('Two named'));
+  await r.findByText('alpha two lives');
+  r.getByText('alpha one lives');
+
+  // The pinned pane owns its own theme.
+  await userEvent.click(r.getByRole('button', { name: 'pinned: light' }));
+  await r.findByRole('button', { name: 'pinned: dark' });
+  r.getByText('alpha one lives');
+
+  await userEvent.click(r.getByRole('button', { name: 'Unpin' }));
+  await waitFor(() => assert.equal(r.queryByText('alpha one lives'), null));
+  r.getByText('alpha two lives');
+  await r.unmount();
+});
+
 test('a subscribed update reaches the sidebar and remounts the preview', async () => {
   let push: ((next: Discovery) => void) | null = null;
   const subscribe = (listener: (next: Discovery) => void) => {
