@@ -16,6 +16,8 @@ import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button, SplitPane, ThemeProvider } from 'react-x11';
 import { Tree } from '@react-x11/components/tree';
 import { controlEntries, ControlsPanel } from './controls.js';
+import { ErrorPanel } from './error-panel.js';
+import { CHROME_BG, FONT, HAIRLINE, SPACE } from './ui.js';
 import {
   effectiveMeta,
   type DiscoveredFile,
@@ -29,6 +31,10 @@ export interface WorkbenchAppProps {
   subscribe?: (listener: (next: Discovery) => void) => () => void;
   /** The window's close button. Absent: the close request is ignored. */
   onQuit?: () => void;
+  /** Opening size. A real window is resized by the WM after this; tests
+   * and the screenshot script pass it to lay out at a chosen size. */
+  width?: number;
+  height?: number;
 }
 
 type Scheme = 'light' | 'dark';
@@ -61,7 +67,7 @@ function findSelected(
 }
 
 export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
-  const { initial, subscribe, onQuit } = props;
+  const { initial, subscribe, onQuit, width = 1100, height = 720 } = props;
 
   // The epoch keys story remounts: a reload delivers new render functions,
   // and the boundary must drop a previous error with them.
@@ -126,26 +132,42 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
 
   const selected = findSelected(discovery, selectedRow);
   const pinnedSelected = pinned ? findSelected(discovery, pinned.rowId) : null;
+  const storyCount = discovery.files.reduce(
+    (total, file) => total + file.stories.length,
+    0,
+  );
 
   return (
     <window
       title="x11-workbench"
-      width={1100}
-      height={720}
+      width={width}
+      height={height}
       onCloseRequest={onQuit}
     >
-      <SplitPane direction="row" defaultSize={280} min={180} minSecond={320}>
-        <box style={{ flexDirection: 'column', flexGrow: 1 }}>
+      <SplitPane direction="row" defaultSize={260} min={180} minSecond={320}>
+        <box
+          style={{
+            flexDirection: 'column',
+            flexGrow: 1,
+            backgroundColor: CHROME_BG,
+            borderEndWidth: HAIRLINE.width,
+            borderColor: HAIRLINE.color,
+          }}
+        >
           <box
             style={{
-              paddingStart: 12,
-              paddingEnd: 12,
-              paddingTop: 8,
-              paddingBottom: 8,
+              paddingStart: SPACE.row,
+              paddingEnd: SPACE.row,
+              paddingTop: SPACE.row,
+              paddingBottom: SPACE.tight,
+              gap: 2,
             }}
           >
-            <text style={{ color: '$textMuted', fontSize: 11 }}>
-              {`${discovery.files.length} files`}
+            <text style={{ fontSize: FONT.body, fontWeight: 600 }}>
+              workbench
+            </text>
+            <text style={{ color: '$textMuted', fontSize: FONT.meta }}>
+              {`${storyCount} ${storyCount === 1 ? 'story' : 'stories'} in ${discovery.files.length} ${discovery.files.length === 1 ? 'file' : 'files'}`}
             </text>
           </box>
           <Tree
@@ -154,12 +176,41 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
             onExpandedChange={(next) => setExpanded(next)}
             selected={selectedRow}
             onSelect={(id) => setSelectedRow(String(id))}
+            renderLabel={(row) => (
+              <box
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'baseline',
+                  gap: SPACE.tight,
+                }}
+              >
+                <text
+                  style={{
+                    fontSize: FONT.body,
+                    // Files are the groups, stories the things in them.
+                    fontWeight: row.depth === 0 ? 600 : 400,
+                  }}
+                >
+                  {String(row.item.label ?? '')}
+                </text>
+                {pinned?.rowId === row.id && (
+                  <text
+                    style={{
+                      fontSize: FONT.meta,
+                      color: row.selected ? row.color : '$textMuted',
+                    }}
+                  >
+                    pinned
+                  </text>
+                )}
+              </box>
+            )}
             style={{ flexGrow: 1, minHeight: 0 }}
             data-testname="workbench-sidebar"
             aria-label="stories"
           />
         </box>
-        <box style={{ flexDirection: 'column', flexGrow: 1 }}>
+        <box style={{ flexDirection: 'column', flexGrow: 1, minWidth: 0 }}>
           <Toolbar
             selected={selected}
             scheme={scheme}
@@ -167,6 +218,14 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
               setScheme((s) => (s === 'light' ? 'dark' : 'light'))
             }
             pinned={pinned !== null}
+            pinnedScheme={pinned?.scheme ?? 'light'}
+            onTogglePinnedScheme={() =>
+              setPinned((p) =>
+                p
+                  ? { ...p, scheme: p.scheme === 'light' ? 'dark' : 'light' }
+                  : p,
+              )
+            }
             onTogglePin={() => {
               if (pinned) {
                 setPinned(null);
@@ -181,13 +240,6 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
             selected={selected}
             pinnedSelected={pinnedSelected?.story ? pinnedSelected : null}
             pinnedScheme={pinned?.scheme ?? 'light'}
-            onTogglePinnedScheme={() =>
-              setPinned((p) =>
-                p
-                  ? { ...p, scheme: p.scheme === 'light' ? 'dark' : 'light' }
-                  : p,
-              )
-            }
             scheme={scheme}
             epoch={epoch}
             bothThemes={bothThemes}
@@ -211,12 +263,47 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
   );
 }
 
+/** One spelling of "which story is this", everywhere it is said. */
+function Breadcrumb(props: { path: string; name?: string | null }): ReactNode {
+  const { path, name } = props;
+  return (
+    <box
+      style={{
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        flexGrow: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+      }}
+    >
+      <text style={{ color: '$textMuted', fontSize: FONT.meta }}>{path}</text>
+      {name && (
+        <>
+          <text
+            style={{
+              color: '$textMuted',
+              fontSize: FONT.meta,
+              marginStart: 6,
+              marginEnd: 6,
+            }}
+          >
+            /
+          </text>
+          <text style={{ fontSize: FONT.meta, fontWeight: 600 }}>{name}</text>
+        </>
+      )}
+    </box>
+  );
+}
+
 function Toolbar(props: {
   selected: Selected | null;
   scheme: Scheme;
   onToggleScheme: () => void;
   pinned: boolean;
   onTogglePin: () => void;
+  pinnedScheme: Scheme;
+  onTogglePinnedScheme: () => void;
   bothThemes: boolean;
   onToggleBothThemes: () => void;
 }): ReactNode {
@@ -226,14 +313,13 @@ function Toolbar(props: {
     onToggleScheme,
     pinned,
     onTogglePin,
+    pinnedScheme,
+    onTogglePinnedScheme,
     bothThemes,
     onToggleBothThemes,
   } = props;
-  const label = selected
-    ? selected.story
-      ? `${selected.file.id} · ${selected.story.name}`
-      : selected.file.id
-    : '';
+  const path = selected ? selected.file.id : '';
+  const name = selected?.story ? selected.story.name : null;
   const gridControls =
     selected !== null &&
     selected.story === null &&
@@ -243,18 +329,23 @@ function Toolbar(props: {
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingStart: 12,
-        paddingEnd: 12,
-        paddingTop: 6,
-        paddingBottom: 6,
-        borderBottomWidth: 1,
-        borderColor: '$border',
+        gap: SPACE.tight,
+        paddingStart: SPACE.pane,
+        paddingEnd: SPACE.row,
+        paddingTop: SPACE.tight,
+        paddingBottom: SPACE.tight,
+        backgroundColor: CHROME_BG,
+        borderBottomWidth: HAIRLINE.width,
+        borderColor: HAIRLINE.color,
       }}
     >
-      <text style={{ color: '$textMuted', fontSize: 12, flexGrow: 1 }}>
-        {label}
-      </text>
+      <Breadcrumb path={path} name={name} />
+      {pinned && (
+        <Button
+          label={`Pinned: ${pinnedScheme}`}
+          onPress={onTogglePinnedScheme}
+        />
+      )}
       {(selected?.story || pinned) && (
         <Button label={pinned ? 'Unpin' : 'Pin'} onPress={onTogglePin} />
       )}
@@ -276,7 +367,6 @@ function Main(props: {
   selected: Selected | null;
   pinnedSelected: Selected | null;
   pinnedScheme: Scheme;
-  onTogglePinnedScheme: () => void;
   scheme: Scheme;
   epoch: number;
   bothThemes: boolean;
@@ -288,7 +378,6 @@ function Main(props: {
     selected,
     pinnedSelected,
     pinnedScheme,
-    onTogglePinnedScheme,
     scheme,
     epoch,
     bothThemes,
@@ -298,13 +387,7 @@ function Main(props: {
   } = props;
 
   if (!selected) {
-    return (
-      <box
-        style={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}
-      >
-        <text style={{ color: '$textMuted' }}>Select a story</text>
-      </box>
-    );
+    return <EmptyState />;
   }
 
   const { file, story } = selected;
@@ -331,13 +414,8 @@ function Main(props: {
   const content = pinnedSelected?.story ? (
     <SplitPane direction="row" defaultSize={430} min={220} minSecond={220}>
       <ComparePane
-        title={`${pinnedSelected.file.id} · ${pinnedSelected.story.name}`}
-        action={
-          <Button
-            label={`pinned: ${pinnedScheme}`}
-            onPress={onTogglePinnedScheme}
-          />
-        }
+        path={pinnedSelected.file.id}
+        name={pinnedSelected.story.name}
       >
         <StoryFrame
           file={pinnedSelected.file}
@@ -351,7 +429,7 @@ function Main(props: {
           }
         />
       </ComparePane>
-      <ComparePane title={`${file.id} · ${story.name}`}>
+      <ComparePane path={file.id} name={story.name}>
         <StoryFrame
           file={file}
           story={story}
@@ -362,7 +440,7 @@ function Main(props: {
       </ComparePane>
     </SplitPane>
   ) : (
-    <box style={{ flexGrow: 1, padding: 16, alignItems: 'flex-start' }}>
+    <Canvas>
       <StoryFrame
         file={file}
         story={story}
@@ -370,7 +448,7 @@ function Main(props: {
         epoch={epoch}
         overrides={overrides}
       />
-    </box>
+    </Canvas>
   );
 
   return (
@@ -391,40 +469,105 @@ function Main(props: {
   );
 }
 
+/**
+ * Nothing selected yet — the first screen a newcomer sees, so it names the
+ * three things the sidebar can do rather than saying only "select a story".
+ */
+function EmptyState(): ReactNode {
+  const hints: [string, string][] = [
+    ['a story', 'preview it on its own'],
+    ['a file', 'see all its stories side by side'],
+    ['Pin', 'hold one story and compare another against it'],
+  ];
+  return (
+    <box
+      style={{
+        flexGrow: 1,
+        backgroundColor: CHROME_BG,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <box style={{ gap: SPACE.hair, maxWidth: 360 }}>
+        <text
+          style={{
+            fontSize: FONT.body,
+            fontWeight: 600,
+            marginBottom: SPACE.tight,
+          }}
+        >
+          Select a story
+        </text>
+        {hints.map(([what, does]) => (
+          <box
+            key={what}
+            style={{ flexDirection: 'row', alignItems: 'baseline' }}
+          >
+            <text style={{ fontSize: FONT.meta, fontWeight: 600, width: 56 }}>
+              {what}
+            </text>
+            <text
+              style={{ fontSize: FONT.meta, color: '$textMuted', flexGrow: 1 }}
+            >
+              {does}
+            </text>
+          </box>
+        ))}
+      </box>
+    </box>
+  );
+}
+
+/**
+ * The canvas: the tinted ground a story surface sits on. Tinted rather
+ * than white because the story frame is `$background` — the contrast is
+ * what shows the component's bounds without drawing a border around it,
+ * and a border there read as frame-in-frame against a story with a border
+ * of its own.
+ */
+function Canvas(props: { children: ReactNode }): ReactNode {
+  return (
+    <box
+      style={{
+        flexGrow: 1,
+        minWidth: 0,
+        backgroundColor: CHROME_BG,
+        padding: SPACE.canvas,
+        alignItems: 'flex-start',
+        overflow: 'scroll',
+      }}
+    >
+      {props.children}
+    </box>
+  );
+}
+
 function ComparePane(props: {
-  title: string;
-  action?: ReactNode;
+  path: string;
+  name: string;
   children: ReactNode;
 }): ReactNode {
-  const { title, action, children } = props;
+  const { path, name, children } = props;
   return (
     <box style={{ flexDirection: 'column', flexGrow: 1, minWidth: 0 }}>
       <box
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 8,
-          paddingStart: 12,
-          paddingEnd: 12,
-          paddingTop: 4,
-          paddingBottom: 4,
+          gap: SPACE.tight,
+          paddingStart: SPACE.row,
+          paddingEnd: SPACE.row,
+          // A fixed height, not padding: the two panes' canvases must
+          // start at the same y or the comparison is off by a header.
+          height: 30,
+          backgroundColor: CHROME_BG,
+          borderBottomWidth: HAIRLINE.width,
+          borderColor: HAIRLINE.color,
         }}
       >
-        <text style={{ color: '$textMuted', fontSize: 11, flexGrow: 1 }}>
-          {title}
-        </text>
-        {action}
+        <Breadcrumb path={path} name={name} />
       </box>
-      <box
-        style={{
-          flexGrow: 1,
-          overflow: 'scroll',
-          padding: 12,
-          alignItems: 'flex-start',
-        }}
-      >
-        {children}
-      </box>
+      <Canvas>{children}</Canvas>
     </box>
   );
 }
@@ -467,12 +610,20 @@ function GridPanel(props: {
   const schemes: Scheme[] = bothThemes ? ['light', 'dark'] : [scheme];
 
   return (
-    <box style={{ flexGrow: 1, overflow: 'scroll', padding: 16 }}>
+    <box
+      style={{
+        flexGrow: 1,
+        minWidth: 0,
+        overflow: 'scroll',
+        padding: SPACE.canvas,
+        backgroundColor: CHROME_BG,
+      }}
+    >
       <box
         style={{
           flexDirection: 'row',
           flexWrap: 'wrap',
-          gap: 16,
+          gap: SPACE.canvas,
           alignItems: 'flex-start',
         }}
       >
@@ -480,14 +631,9 @@ function GridPanel(props: {
           schemes.map((cellScheme) => (
             <box
               key={`${story.exportName}:${cellScheme}`}
-              style={{
-                flexDirection: 'column',
-                width: effectiveMeta(file, story).size?.width ?? 340,
-              }}
+              style={{ flexDirection: 'column', gap: SPACE.hair }}
             >
-              <text
-                style={{ color: '$textMuted', fontSize: 11, marginBottom: 4 }}
-              >
+              <text style={{ color: '$textMuted', fontSize: FONT.meta }}>
                 {schemes.length > 1
                   ? `${story.name} · ${cellScheme}`
                   : story.name}
@@ -534,20 +680,28 @@ function StoryFrame(props: {
 }): ReactNode {
   const { file, story, scheme, epoch, overrides } = props;
   const meta = effectiveMeta(file, story);
-  const frame = meta.size
+  // `size` is the room the *story* gets, not the frame's outer size: the
+  // frame is that plus its padding. Sizing the frame instead (the first
+  // cut) silently handed the story 32px less than it asked for, which the
+  // workbench's own controls-panel story caught by overflowing.
+  const inner = meta.size
     ? { width: meta.size.width, height: meta.size.height }
-    : { alignSelf: 'stretch' as const, flexGrow: 1 };
+    : {};
 
   return (
-    <ThemeProvider colorScheme={scheme} style={{ ...frame }}>
+    <ThemeProvider colorScheme={scheme} style={{ alignSelf: 'flex-start' }}>
       <box
         data-testname="workbench-preview"
         style={{
-          flexGrow: 1,
+          ...inner,
           backgroundColor: '$background',
-          borderWidth: 1,
-          borderColor: '$border',
-          padding: 12,
+          // Ink as well as ground: text colour cascades down the *node*
+          // tree, so without this a story previewed in the opposite scheme
+          // to the chrome inherits the chrome's ink and paints dark text on
+          // a dark card. Only explicitly-tokened colours flip on their own.
+          color: '$text',
+          borderRadius: 6,
+          padding: SPACE.pane,
         }}
       >
         <StoryBoundary
@@ -597,30 +751,4 @@ class StoryBoundary extends Component<
     }
     return this.props.children;
   }
-}
-
-function ErrorPanel(props: { heading: string; error: unknown }): ReactNode {
-  const { heading, error } = props;
-  const detail =
-    error instanceof Error ? (error.stack ?? error.message) : String(error);
-  return (
-    <box
-      data-testname="workbench-error"
-      style={{ flexDirection: 'column', padding: 4 }}
-    >
-      <text style={{ color: '$danger' }}>{heading}</text>
-      <text
-        selectable
-        tabIndex={-1}
-        style={{
-          color: '$danger',
-          fontFamily: '$monoFamily',
-          fontSize: 11,
-          marginTop: 8,
-        }}
-      >
-        {detail}
-      </text>
-    </box>
-  );
 }

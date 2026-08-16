@@ -13,11 +13,31 @@ import type { ReactNode } from 'react';
 import { Button, RadioGroup, Radio, Slider, Switch } from 'react-x11';
 import type { DiscoveredStory } from '../discovery/index.js';
 import type { ControlSpec } from '../story/index.js';
+import { CHROME_BG, FONT, HAIRLINE, SPACE } from './ui.js';
 
 export interface ControlEntry {
   key: string;
   spec: ControlSpec;
 }
+
+/**
+ * A `<textinput>` is undressed by design: core measures it at the font's
+ * cap band (`TextInputNode.measureContent`), leaving padding, border and
+ * line height to whoever mounts it — which is why core's own
+ * `PasswordInput` wraps one in a field box. Without this the glyphs paint
+ * outside a ~12px box and the text is clipped in half.
+ */
+const FIELD = {
+  paddingStart: 8,
+  paddingEnd: 8,
+  paddingTop: 5,
+  paddingBottom: 5,
+  borderWidth: 1,
+  borderColor: '$border',
+  borderRadius: 4,
+  backgroundColor: '$background',
+  ':focus': { borderColor: '$borderFocus' },
+} as const;
 
 function inferSpec(value: unknown): ControlSpec | null {
   switch (typeof value) {
@@ -65,16 +85,24 @@ export function ControlsPanel(props: {
     <box
       data-testname="workbench-controls"
       style={{
-        width: 300,
+        width: 280,
+        flexShrink: 0,
         flexDirection: 'column',
-        backgroundColor: '$surface',
-        padding: 12,
-        gap: 12,
+        backgroundColor: CHROME_BG,
+        borderStartWidth: HAIRLINE.width,
+        borderColor: HAIRLINE.color,
+        paddingStart: SPACE.pane,
+        paddingEnd: SPACE.pane,
+        paddingTop: SPACE.row,
+        paddingBottom: SPACE.pane,
+        gap: SPACE.pane,
         overflow: 'scroll',
       }}
     >
-      <box style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <text style={{ flexGrow: 1, color: '$textMuted', fontSize: 12 }}>
+      <box
+        style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.tight }}
+      >
+        <text style={{ flexGrow: 1, fontSize: FONT.body, fontWeight: 600 }}>
           Controls
         </text>
         <Button
@@ -106,9 +134,11 @@ function ControlRow(props: {
   return (
     <box
       data-testname={`control-${entry.key}`}
-      style={{ flexDirection: 'column', gap: 4 }}
+      style={{ flexDirection: 'column', gap: SPACE.hair }}
     >
-      <text style={{ color: '$textMuted', fontSize: 11 }}>{entry.key}</text>
+      <text style={{ color: '$textMuted', fontSize: FONT.meta }}>
+        {entry.key}
+      </text>
       <ControlEditor entry={entry} value={value} onChange={onChange} />
     </box>
   );
@@ -156,7 +186,9 @@ function ControlEditor(props: {
     const { min, max, step } = boundedSpec;
     const current = typeof value === 'number' ? value : min;
     return (
-      <box style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <box
+        style={{ flexDirection: 'row', alignItems: 'center', gap: SPACE.row }}
+      >
         <Slider
           value={current}
           min={min}
@@ -166,7 +198,13 @@ function ControlEditor(props: {
           style={{ flexGrow: 1 }}
           aria-label={key}
         />
-        <text style={{ color: '$textMuted', fontSize: 11 }}>
+        <text
+          style={{
+            color: '$textMuted',
+            fontSize: FONT.meta,
+            minWidth: 20,
+          }}
+        >
           {String(current)}
         </text>
       </box>
@@ -178,6 +216,7 @@ function ControlEditor(props: {
     <textinput
       value={value === undefined ? '' : String(value)}
       placeholder={key}
+      style={FIELD}
       onChange={(ev) => {
         if (!numeric) {
           onChange(ev.value);

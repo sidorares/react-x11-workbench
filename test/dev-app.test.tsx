@@ -148,7 +148,7 @@ test('the theme toggle flips its own label', async () => {
     wrap: false,
   });
 
-  await userEvent.click(r.getByText('one'));
+  await userEvent.click(r.getByText('one', { exact: true }));
   await r.findByText('alpha one lives');
   await userEvent.click(r.getByRole('button', { name: 'Dark' }));
   await r.findByRole('button', { name: 'Light' });
@@ -244,8 +244,8 @@ test('split: pin holds one story while the sidebar changes the other', async () 
   r.getByText('alpha one lives');
 
   // The pinned pane owns its own theme.
-  await userEvent.click(r.getByRole('button', { name: 'pinned: light' }));
-  await r.findByRole('button', { name: 'pinned: dark' });
+  await userEvent.click(r.getByRole('button', { name: 'Pinned: light' }));
+  await r.findByRole('button', { name: 'Pinned: dark' });
   r.getByText('alpha one lives');
 
   await userEvent.click(r.getByRole('button', { name: 'Unpin' }));
@@ -268,7 +268,7 @@ test('a subscribed update reaches the sidebar and remounts the preview', async (
     { wrap: false },
   );
 
-  await userEvent.click(r.getByText('one'));
+  await userEvent.click(r.getByText('one', { exact: true }));
   await r.findByText('alpha one lives');
 
   const reloadedAlpha = file({

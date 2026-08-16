@@ -49,6 +49,7 @@
     "postinstall": "node scripts/prepare-components.mjs",
     "prebuild": "rm -rf dist",
     "build": "tsc -p tsconfig.build.json",
+    "shot": "tsx scripts/shot.tsx",
     "test": "tsx --test test/*.test.ts test/*.test.tsx",
     "typecheck": "tsc -p tsconfig.json",
     "format": "prettier --write .",

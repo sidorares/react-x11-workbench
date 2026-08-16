@@ -8,7 +8,7 @@ import { story } from '../src/story/index.js';
 export default { title: 'Card' };
 
 const ACCENTS: Record<string, string> = {
-  white: '#e8e8e8',
+  white: '#f4f4f4',
   grey: '#485353',
   yellow: '#d9a520',
 };
@@ -31,13 +31,21 @@ export const product = story(
         borderRadius: 6,
       }}
     >
-      <box
-        style={{
-          height: 8,
-          backgroundColor: ACCENTS[args.accent] ?? ACCENTS['white'],
-          borderRadius: 4,
-        }}
-      />
+      <box style={{ flexDirection: 'row', gap: 6 }}>
+        {Object.entries(ACCENTS).map(([name, colour]) => (
+          <box
+            key={name}
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: 9,
+              backgroundColor: colour,
+              borderWidth: args.accent === name ? 2 : 1,
+              borderColor: args.accent === name ? '$accent' : '$border',
+            }}
+          />
+        ))}
+      </box>
       <text style={{ fontSize: 18 }}>{args.title}</text>
       <text style={{ color: '$textMuted' }}>
         {args.outOfStock ? 'Out of stock' : 'In stock'}
