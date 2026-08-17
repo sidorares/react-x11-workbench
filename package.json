@@ -70,7 +70,7 @@
     "@types/react": "^19.2.17",
     "prettier": "^3.6.0",
     "react": "^19.2.8",
-    "react-x11": "github:sidorares/react-x11#cefbf44cc978719b54fd625b4bd270695acea6ba",
+    "react-x11": "github:sidorares/react-x11#58cd2286adc28399dbac5903bda1491bb5664134",
     "typescript": "^7.0.2"
   },
   "overrides": {

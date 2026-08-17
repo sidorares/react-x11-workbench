@@ -99,8 +99,9 @@ export interface DiscoverOptions {
    * Cache-buster appended to each story module's import URL. Node's module
    * cache is keyed by URL, so re-discovery with a fresh value re-evaluates
    * the modules — the watch-restart seam. Old evaluations are not unloaded
-   * (that is ESM), which is why side-effectful registration needs the
-   * re-registration policy tracked upstream (react-x11#318).
+   * (that is ESM). Re-evaluating a module that registers an element is
+   * safe since core's re-registration policy landed (react-x11#318): the
+   * same definition registered twice no longer throws.
    */
   bust?: string;
   /** Skip config loading and use this one (a caller that already has it). */

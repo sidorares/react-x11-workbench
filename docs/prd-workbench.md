@@ -251,7 +251,8 @@ workbench is the best stress test the ecosystem has, and it eats core's
 - **Watch mode**: restart-the-preview-tree by default — the watcher
   re-imports changed story modules (cache-busted) and remounts. Plain,
   loses component state, always correct. State-preserving Fast Refresh is
-  M2 (react-x11#317), not the foundation, because its constraints are real
+  M2 (on core's `react-x11/refresh`, landed), not the foundation, because
+  its constraints are real
   and its failure mode is confusing staleness.
 
 ## The capture CLI — M3, riding the same contract
@@ -293,20 +294,19 @@ milestone gates on it), **ergonomics** (workaround exists), or **gated**
 (only a later milestone cares). Every workaround is on public API —
 nothing here forks core.
 
-1. **Fast Refresh is an example pattern, not a product**
-   ([react-x11#317](https://github.com/sidorares/react-x11/issues/317)) —
-   _blocker for M2 only._ Core's `examples/hmr-*.mjs` show state-preserving
-   reload via Node ≥ 22.15 `module.registerHooks` + `react-refresh/babel`,
-   with documented constraints (classic JSX transform, identity modules
-   kept out of the hot graph). M1's watch-restart needs none of it; M2
-   productizes it, ideally as core's `react-x11/refresh` so app authors
-   get it too.
-2. **`registerElement` throws on hot re-registration**
-   ([react-x11#318](https://github.com/sidorares/react-x11/issues/318)) —
-   _bites in M2._ Components register elements at module scope without
-   `override`, so a hot-re-imported module throws. The proposal upstream is
-   tolerating identical re-registration (or a refresh-session flag); the
-   workbench's loader can interpose in the meantime.
+1. **~~Fast Refresh is an example pattern, not a product~~ — closed
+   upstream** ([react-x11#317](https://github.com/sidorares/react-x11/issues/317),
+   shipped as core PR #321). Core now exports `react-x11/refresh`,
+   `./refresh/register` and `./refresh/loader`; the pin carries them as of
+   `58cd228`. M2 consumes that instead of productizing the example
+   pattern itself. The documented constraints (Node ≥ 22.15
+   `module.registerHooks`, classic JSX transform, identity modules kept
+   out of the hot graph) are now core's to state.
+2. **~~`registerElement` throws on hot re-registration~~ — closed
+   upstream** ([react-x11#318](https://github.com/sidorares/react-x11/issues/318),
+   shipped as core PR #322). Re-registering the _same_ definition no
+   longer throws, verified against the pin, so a hot-re-imported story
+   module no longer needs the loader to interpose.
 3. **No plug-side embedding (`createRoot({ embedInto })`)**
    ([react-x11#316](https://github.com/sidorares/react-x11/issues/316)) —
    _gated on M4._ Out-of-process story isolation (crash containment,
@@ -404,8 +404,9 @@ _Ship bar: a component-library author develops a new variant of `<Table>`
 and reviews it against the existing variants side by side — edit, save,
 see — without writing an example app or leaving the workshop._
 
-**M2 — the live loop.** State-preserving Fast Refresh (react-x11#317, with
-the #318 re-registration policy), the knobs panel grown past its shipped
+**M2 — the live loop.** State-preserving Fast Refresh — now a matter of
+adopting core's `react-x11/refresh` and its re-registration policy, both
+landed upstream — the knobs panel grown past its shipped
 basics (`CodeEditor` for object args; the basic panel — declared +
 type-inferred controls, live overrides — landed with M1), the inspector (`inspect()`-driven
 props/hooks, DevTools passthrough), `play` functions runnable from the
