@@ -8,6 +8,7 @@
 // machine (fc-match otherwise answers differently per host).
 
 import * as React from 'react';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -28,10 +29,28 @@ const flag = (name: string) => argv.includes(`--${name}`);
 const width = Number(opt('width') ?? 1100);
 const height = Number(opt('height') ?? 720);
 
-const FONTS = {
-  'sans-serif': '/opt/X11/share/fonts/TTF/Vera.ttf',
-  monospace: '/opt/X11/share/fonts/TTF/VeraMono.ttf',
-};
+// Pinning the faces is what makes two shots comparable: unpinned, ntk asks
+// `fc-match`, which answers differently per machine. Bitstream Vera ships
+// with XQuartz; DejaVu is its descendant and is what Linux boxes have. If
+// neither is present we fall back to fc-match and say so — the shot is
+// still useful, it is just not comparable across machines.
+const FONT_CANDIDATES = [
+  {
+    'sans-serif': '/opt/X11/share/fonts/TTF/Vera.ttf',
+    monospace: '/opt/X11/share/fonts/TTF/VeraMono.ttf',
+  },
+  {
+    'sans-serif': '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    monospace: '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
+  },
+];
+
+const FONTS = FONT_CANDIDATES.find((set) =>
+  Object.values(set).every((file) => existsSync(file)),
+);
+if (!FONTS) {
+  console.warn('no pinned font set found; falling back to fc-match');
+}
 
 const discovery = await discover({ root });
 
@@ -41,7 +60,7 @@ const r = await renderX11(
     wrap: false,
     width,
     height,
-    fonts: FONTS,
+    ...(FONTS ? { fonts: FONTS } : {}),
     colorScheme: (opt('scheme') as 'light' | 'dark') ?? 'light',
   },
 );

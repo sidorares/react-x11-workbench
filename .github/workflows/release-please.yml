@@ -1,0 +1,50 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # Manifest mode: the strategy lives in release-please-config.json, not
+      # here. v5 takes no per-package inputs — passing one is warned about
+      # and ignored, which looks like it worked right up until the release PR
+      # proposes the wrong version.
+      - uses: googleapis/release-please-action@v5
+        id: release
+
+      # Publishing uses npm trusted publishing (OIDC) — no token secret.
+      # Configure this repo + workflow as a trusted publisher for
+      # @react-x11/workbench on npmjs.com; `id-token: write` above is what
+      # lets npm mint the credential, and provenance comes with it.
+      #
+      # The *first* publish cannot go through here: trusted publishing binds
+      # to a package that already exists, so the first version has to be
+      # pushed by hand once (see AGENTS.md, "Releases").
+      - uses: actions/checkout@v7
+        if: ${{ steps.release.outputs.release_created }}
+      - uses: actions/setup-node@v7
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1
+      - run: npm install -g npm@latest
+        if: ${{ steps.release.outputs.release_created }}
+      - run: npm ci
+        if: ${{ steps.release.outputs.release_created }}
+      # `prepack` builds too, so this is not what produces dist/ — it is what
+      # makes a compile failure its own red step instead of something to find
+      # in the middle of `npm publish` output.
+      - run: npm run build
+        if: ${{ steps.release.outputs.release_created }}
+      # A scoped package defaults to restricted; this one is public.
+      - run: npm publish --access public
+        if: ${{ steps.release.outputs.release_created }}

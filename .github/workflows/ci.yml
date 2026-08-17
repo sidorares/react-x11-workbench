@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      # `npm ci` also runs scripts/prepare-components.mjs, which compiles the
+      # slice of @react-x11/components this repo imports: that dependency is
+      # a git spec, and a git install ships `src` without `dist` because the
+      # package builds on `prepack` and npm runs only `prepare` for git deps.
+      - run: npm ci
+      # No display anywhere here, and no xvfb: the whole suite — including
+      # the workshop's own UI — renders against node-x11's pure-JavaScript X
+      # server, in process, via react-x11/test.
+      - run: npm test
+
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      # There is no eslint here: typescript-eslint cannot parse TypeScript 7
+      # yet, so `tsc` is the whole static check. It covers src, test, stories
+      # and the config file (see tsconfig.json's `include`).
+      - run: npm run typecheck
+
+  # `tsc` compiles src/ to dist/, and dist/ is what ships — including the
+  # `x11-workbench` bin. This job builds it and then checks what the compiler
+  # has no opinion about: that the package would install coherently. A broken
+  # exports map passes every test in the repo (they import relative paths)
+  # and fails for the first person who depends on it.
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm pack --dry-run

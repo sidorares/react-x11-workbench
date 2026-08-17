@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dev-dependencies:
+        dependency-type: development
+    ignore:
+      # Both react-x11 and @react-x11/components are git specs pinned to a
+      # full commit sha on purpose (AGENTS.md, "Pins"): moving them is a
+      # deliberate, verified step — screenshots included — not a weekly PR.
+      - dependency-name: react-x11
+      - dependency-name: '@react-x11/components'
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
