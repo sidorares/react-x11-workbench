@@ -45,6 +45,8 @@ jobs:
       # in the middle of `npm publish` output.
       - run: npm run build
         if: ${{ steps.release.outputs.release_created }}
-      # A scoped package defaults to restricted; this one is public.
+      # A scoped package defaults to restricted; this one is public. The flag
+      # is redundant with publishConfig.access in package.json — kept so the
+      # intent is legible here, and so a by-hand publish and this one match.
       - run: npm publish --access public
         if: ${{ steps.release.outputs.release_created }}

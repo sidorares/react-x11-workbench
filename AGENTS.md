@@ -224,6 +224,13 @@ binds to a package that already exists: push the first version by hand
 once, then configure this repo and `.github/workflows/release-please.yml`
 as a trusted publisher for `@react-x11/workbench` on npmjs.com.
 
+That by-hand publish is plain `npm publish` — nothing to remember. `prepack`
+runs the build, so the tarball has a `dist/` even from a clean checkout where
+`dist/` is gitignored, and `publishConfig.access` marks the scope public
+without the flag. Provenance is deliberately _not_ in `publishConfig`:
+trusted publishing attaches it on its own, and asserting it in the manifest
+would fail the by-hand publish, which has no OIDC to sign with.
+
 ## Pull requests
 
 A PR that changes anything eye-detectable carries **screenshots rendered by

@@ -25,7 +25,12 @@
     "dist",
     "src"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "dist/cli/index.js"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "types": "./dist/index.d.ts",
   "bin": {
     "x11-workbench": "./dist/cli/index.js"
@@ -47,6 +52,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/prepare-components.mjs",
+    "prepack": "npm run build",
     "prebuild": "rm -rf dist",
     "build": "tsc -p tsconfig.build.json",
     "shot": "tsx scripts/shot.tsx",
