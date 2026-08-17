@@ -1,6 +1,6 @@
 {
   "name": "@react-x11/workbench",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "The component workshop for react-x11: develop, test and compare components in isolation",
   "keywords": [
     "react",
