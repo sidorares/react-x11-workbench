@@ -680,12 +680,23 @@ function StoryFrame(props: {
 }): ReactNode {
   const { file, story, scheme, epoch, overrides } = props;
   const meta = effectiveMeta(file, story);
-  // `size` is the room the *story* gets, not the frame's outer size: the
-  // frame is that plus its padding. Sizing the frame instead (the first
-  // cut) silently handed the story 32px less than it asked for, which the
-  // workbench's own controls-panel story caught by overflowing.
+  // `size` is the room the *story* gets. It must therefore live on a box of
+  // its own, inside the padded one: sizing is border-box, so putting
+  // `size` and `padding` on the same box hands the story `size` minus the
+  // padding — 248 of a declared 280 — and a child that cannot shrink that
+  // far then spills out of a frame which, being fixed-size, cannot grow to
+  // meet it. The workbench's own controls-panel story is the case that
+  // showed it.
   const inner = meta.size
-    ? { width: meta.size.width, height: meta.size.height }
+    ? {
+        width: meta.size.width,
+        height: meta.size.height,
+        // A story bigger than the room it declared scrolls inside it —
+        // what it would do in an app given that space, and better than
+        // painting outside the frame as if nothing were wrong. Costs
+        // nothing when it fits: no track is drawn unless it overflows.
+        overflow: 'scroll' as const,
+      }
     : {};
 
   return (
@@ -693,7 +704,6 @@ function StoryFrame(props: {
       <box
         data-testname="workbench-preview"
         style={{
-          ...inner,
           backgroundColor: '$background',
           // Ink as well as ground: text colour cascades down the *node*
           // tree, so without this a story previewed in the opposite scheme
@@ -704,11 +714,13 @@ function StoryFrame(props: {
           padding: SPACE.pane,
         }}
       >
-        <StoryBoundary
-          key={`${file.id}#${story.exportName}:${scheme}:${epoch}`}
-        >
-          <StoryView story={story} overrides={overrides} />
-        </StoryBoundary>
+        <box data-testname="workbench-story" style={inner}>
+          <StoryBoundary
+            key={`${file.id}#${story.exportName}:${scheme}:${epoch}`}
+          >
+            <StoryView story={story} overrides={overrides} />
+          </StoryBoundary>
+        </box>
       </box>
     </ThemeProvider>
   );
