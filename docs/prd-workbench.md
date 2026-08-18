@@ -40,9 +40,10 @@ x11-workbench capture --diff   # later (M3): every story → PNG, headless, CI-s
 ```
 
 A story file is plain ESM: the default export is file metadata, each named
-export is a story. No runtime dependency, no registration, no tool required
-to import it — a test runner or a docs generator reads the same files the
-workshop does.
+export is a story. A module whose default export is a _component_ is a
+story too, with no file written at all — the bottom of the ladder. No
+runtime dependency, no registration, no tool required to import it — a test
+runner or a docs generator reads the same files the workshop does.
 
 ## The problem, taken apart
 
@@ -149,16 +150,17 @@ never a migration to a second dialect. The workshop, the capture CLI and
 the docs pipeline read the same contract; there is no GUI-only or
 capture-only story.
 
-| When a story needs…                       | …it adds                                            | and nothing else moves                               |
-| ----------------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
-| to exist                                  | a `*.story.tsx` file; each named export a component | —                                                    |
-| a variant to compare against              | another named export                                | the grid and compare views pick both up              |
-| a title, a size, a fixed theme            | `export default { title, size, theme }`             | exports are found the same way                       |
-| knobs                                     | `story(fn, { args, controls })`                     | plain exports beside it stay plain                   |
-| shared chrome (providers, fonts, padding) | a decorator in `workbench.config.ts`                | story files don't know about it                      |
-| interaction ("open the menu, then look")  | `play` on that story                                | the workshop runs it on demand; capture waits for it |
-| a capture matrix (themes × sizes)         | `capture: { themes, sizes, delay }`                 | the workshop shows the same story once               |
-| pixel-perfect CI                          | nothing — capture (M3) reads the same file          | —                                                    |
+| When a story needs…                       | …it adds                                                   | and nothing else moves                               |
+| ----------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
+| to exist at all                           | nothing — a module's default-exported component is a story | globs point at `src/`; no file is written            |
+| a name, a home, siblings                  | a `*.story.tsx` file; each named export a component        | the default export keeps working the same way        |
+| a variant to compare against              | another named export                                       | the grid and compare views pick both up              |
+| a title, a size, a fixed theme            | `export default { title, size, theme }`                    | exports are found the same way                       |
+| knobs                                     | `story(fn, { args, controls })`                            | plain exports beside it stay plain                   |
+| shared chrome (providers, fonts, padding) | a decorator in `workbench.config.ts`                       | story files don't know about it                      |
+| interaction ("open the menu, then look")  | `play` on that story                                       | the workshop runs it on demand; capture waits for it |
+| a capture matrix (themes × sizes)         | `capture: { themes, sizes, delay }`                        | the workshop shows the same story once               |
+| pixel-perfect CI                          | nothing — capture (M3) reads the same file                 | —                                                    |
 
 Three rules keep it honest:
 
@@ -429,12 +431,14 @@ docs-site image automation, a diff-review UI for `--diff` failures.
    a clone. Proposed: `@react-x11/workbench`, bin `x11-workbench`, files
    `*.story.tsx` — "story" is the ecosystem's generic vocabulary; the
    tool's name is not.
-2. **Story discovery beyond `*.story.tsx`.** `@react-x11/components`'
-   seventeen `examples/*.tsx` follow an autorun-guard convention
-   (`REACT_X11_NO_AUTORUN` + `export default App`) that would make them
-   discoverable as zero-cost stories. Deliberately deferred: the focus is
-   explicit story files for component libraries; revisit once the workshop
-   is real and the appetite is known.
+2. **Story discovery beyond `*.story.tsx`.** Half-answered: a
+   default-exported component is a story as of 2026-08-18, so pointing the
+   globs at `src/**/*.tsx` catalogs a component library with no story files
+   written. What stays open is `@react-x11/components`' seventeen
+   `examples/*.tsx`, which are window-rooted _applications_ behind an
+   autorun guard (`REACT_X11_NO_AUTORUN` + `export default App`) — held
+   back by the component/application line decided 2026-08-16, not for want
+   of a discovery rule.
 3. **Baseline policy (M3).** Committed PNGs (core's `docs/img` precedent)
    vs. CI-artifact-only diffing. Proposed: committed, revisit if the
    matrix explodes.
