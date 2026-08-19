@@ -41,9 +41,10 @@ a blocker for anything here.
 
 ## The story contract, and the rule that governs it
 
-**Ceremony is additive.** An existing component export is the bottom rung,
-and every rung up is a small diff to the file already written — never a
-migration to a second dialect. The ladder is in the PRD; the three rules
+**Ceremony is additive.** An existing component export is the bottom rung —
+including a module's _default_ export, so a component file nobody wrote for
+this tool is already a story — and every rung up is a small diff to the
+file already written, never a migration to a second dialect. The ladder is in the PRD; the three rules
 that keep it honest:
 
 1. **Opt-ins are orthogonal.** No field changes meaning because of another
@@ -135,13 +136,17 @@ the harness the capture CLI will ride.
   — the empty state's hint text contains the word "one" — so pass
   `{ exact: true }` when the string is short, and prefer roles.
 - Stories in fixtures cover the off-contract cases on purpose: a module
-  that throws at import, a default-exported component, a non-function named
-  export. Those must stay diagnosed, never silent and never fatal.
+  that throws at import, a default export that is neither `FileMeta` nor a
+  component, a `memo()` default, a non-function named export. Those must
+  stay diagnosed, never silent and never fatal. `test/fixtures/component-
+repo/` is the opposite case — a repo of plain component modules with no
+  story files at all, discovered by globbing `src/`.
 
 ## Dogfooding
 
-`stories/workbench-ui.story.tsx` previews the workbench's own
-`ErrorPanel` and `ControlsPanel`. This is not a gimmick: they are surfaces
+`stories/badge.story.tsx` is the bottom rung dogfooded — a component
+module with nothing but a default export. `stories/workbench-ui.story.tsx`
+previews the workbench's own `ErrorPanel` and `ControlsPanel`. This is not a gimmick: they are surfaces
 you would otherwise only see by breaking something, and reviewing them as a
 grid is what caught the `size` semantics bug. When you add a piece of
 workshop UI with states worth reviewing, give it a story.

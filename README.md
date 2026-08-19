@@ -19,7 +19,19 @@ two of them side by side.
 
 A story is **a component rendered inside another react-x11 component** —
 the way your library's component renders inside somebody's app. A file's
-named exports are its stories; its default export is the file's metadata.
+named exports are its stories; its default export is the file's metadata —
+unless it is a component, in which case it is the file's story:
+
+```tsx
+// src/badge.tsx — a component module, no story file, nothing imported
+export default function Badge() {
+  return <text>Ready</text>;
+}
+```
+
+Point the globs at your source (`stories: ['src/**/*.tsx']`) and every such
+module is in the sidebar, labelled with the component's own name. There are
+no knobs until there are `args` — the rungs below add those.
 
 ```tsx
 // stories/card.story.tsx

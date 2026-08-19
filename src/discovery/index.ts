@@ -12,6 +12,12 @@
 // builtins so the M4 browser publish target can consume the story types.
 // Import it as `@react-x11/workbench/discovery`.
 //
+// Two shapes of file land in the same model: a story file, whose default
+// export is `FileMeta` and whose named exports are stories, and a plain
+// component module, whose default export *is* the story — the bottom rung,
+// reached by pointing a glob at source that was never written for this
+// tool.
+//
 // Loading TypeScript is the runtime's problem, not this module's: under
 // `tsx` (tests, `x11-workbench` itself, which registers tsx's loader) a
 // `.story.tsx` import just works.
@@ -47,7 +53,8 @@ export interface ResolvedWorkbenchConfig {
 export interface DiscoveredStory {
   /** The export's name in the module — the stable half of a story id. */
   exportName: string;
-  /** Display name: `meta.name` when wrapped, the export name otherwise. */
+  /** Display name: `meta.name` when wrapped, else the export name — or,
+   * for the default export, the component's own name or the filename. */
   name: string;
   /** The wrapped meta, or `{}` for a plain component export. */
   meta: StoryMeta<object>;
@@ -73,10 +80,11 @@ export interface DiscoveredFile {
   /** The default export, when it was a `FileMeta` object. */
   meta: FileMeta;
   /**
-   * Stories in module-namespace order — which the spec sorts by export
-   * name, not source order. Deterministic everywhere; authors who want a
-   * curated order name their exports accordingly (a `FileMeta.order` is a
-   * possible later rung, not smuggled in here).
+   * A default-exported component first, then the named exports in
+   * module-namespace order — which the spec sorts by export name, not
+   * source order. Deterministic everywhere; authors who want a curated
+   * order name their exports accordingly (a `FileMeta.order` is a possible
+   * later rung, not smuggled in here).
    */
   stories: DiscoveredStory[];
   /** Why the module has no stories, when importing it threw. */
@@ -196,6 +204,34 @@ function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** One story from one export. `fallbackName` is the label when the export
+ * is a plain component: its own export name, except for `default`, where
+ * the export name says nothing. */
+function toStory(
+  exportName: string,
+  value: unknown,
+  fallbackName: string,
+): DiscoveredStory {
+  const wrapped = isStory(value);
+  const meta: StoryMeta<object> = wrapped ? value.meta : {};
+  return {
+    exportName,
+    name: meta.name ?? fallbackName,
+    meta,
+    render: value as (args: object) => ReactNode,
+    wrapped,
+  };
+}
+
+/** The sidebar label for a default-exported component. Its own name is the
+ * best one available — both `export default function Card` and
+ * `const Card = …; export default Card` carry it — but an anonymous
+ * function is named `default` by the spec, and there the filename says
+ * more. */
+function defaultStoryName(fn: Function, file: string): string {
+  return fn.name && fn.name !== 'default' ? fn.name : deriveTitle(file);
+}
+
 export async function loadStoryFile(
   file: string,
   root: string,
@@ -225,21 +261,39 @@ export async function loadStoryFile(
   }
 
   const diagnostics: Diagnostic[] = [];
+  const stories: DiscoveredStory[] = [];
   let meta: FileMeta = {};
+
+  // The default export is read first because it is what tells the two
+  // kinds of file apart: an object is the file's FileMeta, a function is
+  // the file's component. The second is the ladder's bottom rung — a
+  // module nobody wrote as a story, discovered by pointing a glob at it.
+  // It leads the file's stories rather than sorting among them: it is the
+  // file's subject, not one variant of it.
   if ('default' in namespace) {
     const def = namespace['default'];
-    if (def !== null && typeof def === 'object') {
-      meta = def as FileMeta;
+    if (typeof def === 'function') {
+      stories.push(toStory('default', def, defaultStoryName(def, file)));
+    } else if (def !== null && typeof def === 'object') {
+      if ('$$typeof' in def) {
+        // memo()/forwardRef() return an exotic object, not a function, and
+        // reading one as FileMeta would leave the file silently empty.
+        diagnostics.push({
+          file: id,
+          message:
+            'default export ignored: it looks like a memo()/forwardRef() component, which the workbench cannot read yet — export the inner function, or add a named story export',
+        });
+      } else {
+        meta = def as FileMeta;
+      }
     } else {
       diagnostics.push({
         file: id,
-        message:
-          'default export ignored: a story file default-exports its FileMeta object; a component goes in a named export',
+        message: `default export ignored: a default export is either the file's FileMeta object or its component, and this one is ${def === null ? 'null' : typeof def}`,
       });
     }
   }
 
-  const stories: DiscoveredStory[] = [];
   for (const [exportName, value] of Object.entries(namespace)) {
     if (exportName === 'default') continue;
     if (typeof value !== 'function') {
@@ -249,15 +303,7 @@ export async function loadStoryFile(
       });
       continue;
     }
-    const wrapped = isStory(value);
-    const storyMeta: StoryMeta<object> = wrapped ? value.meta : {};
-    stories.push({
-      exportName,
-      name: storyMeta.name ?? exportName,
-      meta: storyMeta,
-      render: value as (args: object) => ReactNode,
-      wrapped,
-    });
+    stories.push(toStory(exportName, value, exportName));
   }
 
   return {

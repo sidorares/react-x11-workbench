@@ -6,7 +6,9 @@
 // tool, and deleting the workbench leaves meaningful modules behind.
 //
 // The contract, from docs/prd-workbench.md §The story contract:
-// - a `*.story.tsx` file's default export is `FileMeta`;
+// - a file's default export is `FileMeta` when it is an object, and the
+//   file's one story when it is a component — which is how a plain module
+//   nobody wrote for this tool is already a story;
 // - each named export is a story — a plain component, or `story()` when it
 //   needs args, controls, a play function or capture options;
 // - ceremony is additive: every rung is a small diff to the file already
@@ -85,7 +87,9 @@ export interface StoryMeta<Args extends object = {}> {
   capture?: CaptureOptions;
 }
 
-/** A story file's default export: file-level defaults every story inherits. */
+/** A story file's default export: file-level defaults every story inherits.
+ * A file whose default export is a *component* has no FileMeta — that
+ * export is its story, and the file's defaults are the tool's. */
 export interface FileMeta {
   /** Sidebar group; default: the file's path-derived name. */
   title?: string;
