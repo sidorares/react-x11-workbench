@@ -299,15 +299,15 @@ nothing here forks core.
 1. **~~Fast Refresh is an example pattern, not a product~~ — closed
    upstream** ([react-x11#317](https://github.com/sidorares/react-x11/issues/317),
    shipped as core PR #321). Core now exports `react-x11/refresh`,
-   `./refresh/register` and `./refresh/loader`; the pin carries them as of
-   `58cd228`. M2 consumes that instead of productizing the example
-   pattern itself. The documented constraints (Node ≥ 22.15
+   `./refresh/register` and `./refresh/loader`, released in 2.0.0. M2
+   consumes that instead of productizing the example pattern itself. The
+   documented constraints (Node ≥ 22.15
    `module.registerHooks`, classic JSX transform, identity modules kept
    out of the hot graph) are now core's to state.
 2. **~~`registerElement` throws on hot re-registration~~ — closed
    upstream** ([react-x11#318](https://github.com/sidorares/react-x11/issues/318),
    shipped as core PR #322). Re-registering the _same_ definition no
-   longer throws, verified against the pin, so a hot-re-imported story
+   longer throws, verified against 2.0.0, so a hot-re-imported story
    module no longer needs the loader to interpose.
 3. **No plug-side embedding (`createRoot({ embedInto })`)**
    ([react-x11#316](https://github.com/sidorares/react-x11/issues/316)) —

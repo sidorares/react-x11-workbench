@@ -18,10 +18,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-      # `npm ci` also runs scripts/prepare-components.mjs, which compiles the
-      # slice of @react-x11/components this repo imports: that dependency is
-      # a git spec, and a git install ships `src` without `dist` because the
-      # package builds on `prepack` and npm runs only `prepare` for git deps.
       - run: npm ci
       # No display anywhere here, and no xvfb: the whole suite — including
       # the workshop's own UI — renders against node-x11's pure-JavaScript X
