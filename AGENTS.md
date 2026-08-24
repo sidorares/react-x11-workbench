@@ -69,7 +69,7 @@ src/dev/          the workshop: app.tsx (shell), controls.tsx,
 src/cli/          the x11-workbench bin
 stories/          this repo's own stories, including its own UI
 test/             node --test, headless; fixtures/ are fake repos
-scripts/          shot.tsx (screenshots), prepare-components.mjs
+scripts/          shot.tsx (screenshots)
 docs/             the PRD
 ```
 
@@ -153,24 +153,14 @@ workshop UI with states worth reviewing, give it a story.
 
 ## Pins
 
-Both react-x11 packages are **git specs pinned to a full commit sha**, and
-that is deliberate — npm 11 re-resolves a branch spec, so `#master` means a
-different tree tomorrow. Dependabot is told to leave both alone.
+Both react-x11 packages are published to npm and tracked with ordinary
+caret ranges — `react-x11 ^2.0.0` and `@react-x11/components ^0.2.0`.
 
-- `react-x11` — core, unreleased. Its stated policy is that breaking
-  changes are preferred over shims, so a bump is a deliberate step:
-  typecheck, tests, build, and **screenshots compared before and after**.
-- `@react-x11/components` — also unreleased, consumed for `<Tree>`. Two
-  wrinkles, both worked around:
-  1. Its peer range asks for `react-x11 ^2.0.0` while the git build reports
-     1.2.0, so `overrides: { "react-x11": "$react-x11" }` in package.json
-     forces one copy — our sha pin.
-  2. A git install of it ships `src` without `dist`, because it builds on
-     `prepack` and npm runs only `prepare` for git dependencies. So
-     `scripts/prepare-components.mjs` compiles the slice we import, on
-     postinstall. **Extend its `ENTRIES` when importing another component.**
-     The real fix is a one-line `prepare` script upstream; delete this
-     script when that lands.
+- `react-x11` — core. Its stated policy is that breaking changes are
+  preferred over shims, so a major bump is a deliberate step: typecheck,
+  tests, build, and **screenshots compared before and after**.
+- `@react-x11/components` — consumed for `<Tree>`. Pre-1.0, so a minor bump
+  is the breaking one; treat it with the same care.
 
 ## Conventions
 
