@@ -47,6 +47,25 @@ const fileRowId = (file: DiscoveredFile) => `file:${file.id}`;
 const storyRowId = (file: DiscoveredFile, story: DiscoveredStory) =>
   `story:${file.id}#${story.exportName}`;
 
+/**
+ * The selection wash, shaped like a menu row rather than a table band.
+ *
+ * A tree row is full-bleed by default, so the wash runs edge to edge and
+ * dies against the sidebar's hairline — it reads as a stripe cut across the
+ * pane. A menu solves the same problem by insetting its rows inside the
+ * sheet's padding and rounding them, which turns the highlight into a pill
+ * *sitting on* the surface. That is the one highlight in this toolkit the
+ * eye is already trained on, so the sidebar borrows its geometry: one
+ * spacing step of air on both sides, and a radius small enough to stay a
+ * row. The hover wash inherits it too — same shape resting or chosen, which
+ * is what stops the pointer from redrawing the list's edges as it moves.
+ */
+const SIDEBAR_ROW = {
+  marginStart: SPACE.hair,
+  marginEnd: SPACE.hair,
+  borderRadius: 4,
+} as const;
+
 interface Selected {
   file: DiscoveredFile;
   story: DiscoveredStory | null;
@@ -205,6 +224,7 @@ export function WorkbenchApp(props: WorkbenchAppProps): ReactNode {
                 )}
               </box>
             )}
+            styles={{ row: SIDEBAR_ROW }}
             style={{ flexGrow: 1, minHeight: 0 }}
             data-testname="workbench-sidebar"
             aria-label="stories"
