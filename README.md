@@ -74,6 +74,17 @@ export default {
 };
 ```
 
+Story files are compiled by `tsx`, which reads your `tsconfig.json` — so it
+needs the react-x11 JSX runtime, the same setting that compiles the
+components themselves:
+
+```json
+{ "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "react-x11" } }
+```
+
+Without it, JSX compiles to `React.createElement` and every story fails to
+render with `ReferenceError: React is not defined`.
+
 ## Use
 
 ```bash
