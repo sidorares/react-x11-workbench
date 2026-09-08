@@ -65,17 +65,17 @@
     "react-x11": "^2.2.1"
   },
   "dependencies": {
-    "@react-x11/components": "^0.2.1",
-    "tinyglobby": "^0.2.15",
+    "@react-x11/components": "^0.4.0",
+    "tinyglobby": "^0.2.17",
     "tsx": "^4.23.13"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.5.0",
     "@types/picomatch": "^4.0.3",
-    "@types/react": "^19.2.17",
-    "prettier": "^3.6.0",
+    "@types/react": "^19.2.18",
+    "prettier": "^3.9.6",
     "react": "^19.2.8",
-    "react-x11": "^2.2.1",
+    "react-x11": "^2.9.0",
     "typescript": "^7.0.2"
   }
 }
